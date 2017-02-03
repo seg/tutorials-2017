@@ -1,0 +1,46 @@
+\section{Doing it backwards}
+
+It's surprisingly difficult to find a description of a method for calculating
+the amplitudes in the NMO correction.
+The only one I could find is a single paragraph in the book by
+\citet{Yilmaz_2001} (available on the SEG Wiki at
+\href{http://wiki.seg.org/wiki/NMO_for_a_flat_reflector}{wiki.seg.org/wiki/NMO\_for\_a\_flat\_reflector}):
+
+\begin{quotation}
+``The idea is to find the amplitude value at A' on the NMO-corrected gather
+from the amplitude value at A on the original CMP gather. Given quantities
+$t_0$, $x$, and $v_\mathrm{NMO}$, compute $t$ from equation (1). [...] The
+amplitude value at this time can be computed using the amplitudes at the
+neighboring integer sample values [...] This is done by an interpolation scheme
+that involves the four samples.''
+\end{quotation}
+
+This paragraph is telling us to do the calculation backwards.
+Instead of mapping where each point in the CMP goes in the NMO corrected
+gather, we should map where each point in the NMO gather comes from in the CMP.
+Figure 1 shows a sketch of the procedure to calculate the amplitude of a point
+($t_0$, $x$) in the NMO gather.
+
+Here is the full algorithm:
+
+\begin{enumerate}
+    \item Start with an NMO gather filled with zeros.
+    \item For each point ($t_0, x$) in the NMO gather, do:
+    \begin{enumerate}
+        \item Calculate the reflection travel-time ($t$) given $v_\mathrm{NMO}$ using
+              the equation in Figure 1.
+        \item Go to the trace at offset $x$ in the CMP and find the two samples
+              before and the two samples after time $t$.
+        \item If $t$ is greater than the recording time or if it doesn't have
+              two samples after it, skip the next two steps.
+        \item Use the amplitude in these four samples to interpolate the
+              amplitude at time $t$.
+        \item Copy the interpolated amplitude to the NMO gather at ($t_0, x$).
+    \end{enumerate}
+\end{enumerate}
+
+At the end of this algorithm, we will have a fully populated NMO gather with
+the amplitudes sampled from the CMP.
+Notice that we didn't actually use the equation for $t_0$.
+Instead we calculate the reflection travel-time ($t$).
+Good luck guessing that from the equation alone.

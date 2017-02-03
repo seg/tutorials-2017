@@ -1,0 +1,33 @@
+Corresponding author: leouieda@gmail.com
+
+This is a part of The Leading Edge ``Geophysical Tutorials'' series.
+You can read more about it in \citet{Hall_2016a}.
+
+Open any textbook about seismic data processing and you will inevitably find a
+section about the normal moveout (NMO) correction.
+There you'll see that we can correct the measured travel-time of a reflected
+wave $t$ at a given offset $x$ to obtain the travel-time at normal
+incidence $t_0$ by applying the following equation
+
+\begin{equation}
+t_0^2=t^2-\dfrac{x^2}{v_\mathrm{NMO}^2}
+\label{eq:traveltime}
+\end{equation}
+
+in which $v_\mathrm{NMO}$ is the NMO velocity.
+There are variants of this equation with different degrees of accuracy,
+but we'll use this one for simplicity.
+
+When applied to a common midpoint (CMP) section, the equation above is
+supposed to turn the hyperbola associated with a reflection into a straight
+horizontal line.
+What most textbooks won't tell you is \textit{how, exactly, do you apply this
+equation to the data}?
+
+Read on and I'll explain step-by-step how the algorithm for NMO correction from
+\citet{Yilmaz_2001} works and how to implement it in Python.
+The accompanying Jupyter notebook \citep{Perez_2007} contains the full source
+code, with documentation and tests for each function.
+You can download the notebook at
+\href{https://github.com/seg}{github.com/seg} or
+\href{https://github.com/pinga-lab/nmo-tutorial}{github.com/pinga-lab/nmo-tutorial}.
