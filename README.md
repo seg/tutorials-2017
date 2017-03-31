@@ -12,6 +12,10 @@ Questions? [Get in touch!](mailto:matt@agilegeoscience.com)
 - [Step-by-step NMO correction](http://library.seg.org/doi/abs/10.1190/tle36020179.1) by Leonardo Uieda
 - [Jupyter Notebook](https://github.com/seg/tutorials-2017/blob/master/1702_Step_by_step_NMO/step-by-step-nmo.ipynb)
 
+## April 2017
+- [Getting started with CSEM](http://library.seg.org/doi/abs/10.1190/tle36040352.1) by Dieter Werthmüller
+- [Jupyter Notebook](https://github.com/seg/tutorials-2017/blob/master/1704_Getting_started_with_CSEM/Notebook.ipynb)
+
 <hr />
 
 The content of the articles and of the notebooks is © the author(s) and openly licensed [CC-BY-SA](https://creativecommons.org/licenses/by-sa/3.0/). The code is © the author(s) and openly licensed under the terms of the Apache License 2, or under the terms specified by the author, if any.
