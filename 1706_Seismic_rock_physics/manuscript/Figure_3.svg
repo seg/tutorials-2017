@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="510mm"
+   height="170mm"
+   viewBox="0 0 1807.0866 602.3622"
+   id="svg4748"
+   version="1.1"
+   inkscape:version="0.91 r13725"
+   sodipodi:docname="Figure_3.svg"
+   inkscape:export-filename="/Users/matt/Dropbox/Agile/SEG/Tutorials/delMonte_Apr2017/Figure_3.png"
+   inkscape:export-xdpi="200"
+   inkscape:export-ydpi="200">
+  <defs
+     id="defs4750" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.87808281"
+     inkscape:cx="963.02111"
+     inkscape:cy="301.6487"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:window-width="2560"
+     inkscape:window-height="1391"
+     inkscape:window-x="0"
+     inkscape:window-y="23"
+     inkscape:window-maximized="1" />
+  <metadata
+     id="metadata4753">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(0,-450)">
+    <image
+       sodipodi:absref="/Users/matt/Dropbox/Agile/SEG/Tutorials/delMonte_Apr2017/Figure_3_part1.png"
+       xlink:href="Figure_3_part1.png"
+       style="opacity:1"
+       width="630"
+       height="630"
+       preserveAspectRatio="none"
+       id="image5371"
+       x="10.94689"
+       y="436.29312" />
+    <image
+       sodipodi:absref="/Users/matt/Dropbox/Agile/SEG/Tutorials/delMonte_Apr2017/Figure_3_part2.png"
+       xlink:href="Figure_3_part2.png"
+       style="opacity:1"
+       width="630"
+       height="630"
+       preserveAspectRatio="none"
+       id="image5616"
+       x="598.7597"
+       y="435.73474" />
+    <image
+       sodipodi:absref="/Users/matt/Dropbox/Agile/SEG/Tutorials/delMonte_Apr2017/Figure_3_part3.png"
+       xlink:href="Figure_3_part3.png"
+       style="opacity:1"
+       width="630"
+       height="630"
+       preserveAspectRatio="none"
+       id="image5627"
+       x="1189.2101"
+       y="435.13388" />
+  </g>
+</svg>
