@@ -24,7 +24,7 @@ In the $V_\mathrm{P}$&ndash;$\phi_\mathrm{e}$ crossplot I have decided to avoid 
 
 ![](Figure_1_AADM.png)
 
-**Figure 1.** (a) Shale volume (VSH), P-wave impedance ($I_\mathrm{P}$ in 10^3 kg s<sup>&ndash;1</sup> m<sup>&ndash;2</sup>), and $V_\mathrm{P} / V_\mathrm{S}$ for the interval 2100 m to 2250 m. (b) P-wave velocity ($V_\mathrm{P}$ in m/s) vs effective porosity ($\phi_\mathrm{e}$). (c) $V_\mathrm{P} / V_\mathrm{S}$ vs $I_\mathrm{P}$.
+**Figure 1.** (a) Shale volume (VSH), P-wave impedance ($I_\mathrm{P}$ in 10<sup>3</sup> kg s<sup>&ndash;1</sup> m<sup>&ndash;2</sup>), and $V_\mathrm{P} / V_\mathrm{S}$ for the interval 2100 m to 2250 m. (b) P-wave velocity ($V_\mathrm{P}$ in m/s) vs effective porosity ($\phi_\mathrm{e}$). (c) $V_\mathrm{P} / V_\mathrm{S}$ vs $I_\mathrm{P}$.
 
 <!-- I changed the units for Ip then removed the LaTeX formatting: ($I_\mathrm{P}$ in $\mathrm{m} / \mathrm{s} \cdot \mathrm{g} / \mathrm{cm}^3$) -->
 
