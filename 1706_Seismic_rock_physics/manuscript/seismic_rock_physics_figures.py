@@ -176,16 +176,19 @@ ax4 = plt.subplot2grid((1, 9), (0, 6), colspan=3)  # crossplot ip - vp/vs
 ax0.plot(L.VSH[ss], L.index[ss], **sty1)
 ax0.plot(L.VSH[sh], L.index[sh], **sty2)
 ax0.plot(L.VSH, L.index, **sty0)
+ax0.locator_params(axis='x', nbins=2)
 ax0.set_ylabel('Depth')
 ax0.set_xlabel('VSH')
 ax1.plot(L.IP[ss], L.index[ss], **sty1)
 ax1.plot(L.IP[sh], L.index[sh], **sty2)
 ax1.plot(L.IP, L.index,  **sty0)
+ax1.locator_params(axis='x', nbins=2)
 ax1.set_xlabel('$I_\mathrm{P}$')
 ax1.set_xlim(4e3, 8e3)
 ax2.plot(L.VPVS[ss], L.index[ss], **sty1)
 ax2.plot(L.VPVS[sh], L.index[sh], **sty2)
 ax2.plot(L.VPVS, L.index, **sty0)
+ax2.locator_params(axis='x', nbins=2)
 ax2.set_xlabel('$V_\mathrm{P} / V_\mathrm{S}$')
 ax2.set_xlim(1.5, 3)
 ax3.plot(L.PHIE[ss], L.VP[ss], **sty1)
@@ -367,6 +370,7 @@ ax3 = plt.subplot2grid((1, 7), (0, 3), colspan=1)  # synthetic @ 30 deg
 ax4 = plt.subplot2grid((1, 7), (0, 4), colspan=3)  # avo curve
 
 ax0.plot(model_ip, model_z, **opt3)
+ax0.locator_params(axis='x', nbins=1)
 ax0.set_xlabel('$I_\mathrm{P}$')
 ax0.set_xlim(4500, 7500)
 
