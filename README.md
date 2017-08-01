@@ -23,9 +23,9 @@ Questions? [Get in touch!](mailto:matt@agilegeoscience.com)
 ## August 2017
 - [Exploring nonlinear inversions: A 1D magnetotelluric example](http://library.seg.org/doi/abs/10.1190/tle36080696.1) by Seogi Kang, Lindsey J. Heagy, Rowan Cockett, and Douglas W. Oldenburg
 - Jupyter Notebooks
-    - [1_MT1D_NumericalSetup.ipynb](1708_Nonlinear inversion/1_MT1D_NumericalSetup.ipynb)
-    - [2_MT1D_ForwardModellingAndNonuniqueness.ipynb](1708_Nonlinear inversion/2_MT1D_ForwardModellingAndNonuniqueness.ipynb)
-    - [3_MT1D_5layer_inversion.ipynb](1708_Nonlinear inversion/3_MT1D_5layer_inversion.ipynb)
+    - [1_MT1D_NumericalSetup.ipynb](https://github.com/seg/tutorials-2017/blob/master/1708_Nonlinear inversion/1_MT1D_NumericalSetup.ipynb)
+    - [2_MT1D_ForwardModellingAndNonuniqueness.ipynb](https://github.com/seg/tutorials-2017/blob/master/1708_Nonlinear inversion/2_MT1D_ForwardModellingAndNonuniqueness.ipynb)
+    - [3_MT1D_5layer_inversion.ipynb](https://github.com/seg/tutorials-2017/blob/master/1708_Nonlinear inversion/3_MT1D_5layer_inversion.ipynb)
 
 <hr />
 
