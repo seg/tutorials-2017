@@ -1,0 +1,7 @@
+numpy
+scipy
+matplotlib
+ipython
+jupyter
+ipywidgets
+SimPEG
