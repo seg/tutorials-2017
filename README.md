@@ -16,6 +16,17 @@ Questions? [Get in touch!](mailto:matt@agilegeoscience.com)
 - [Getting started with CSEM](http://library.seg.org/doi/abs/10.1190/tle36040352.1) by Dieter Werthmüller
 - [Jupyter Notebook](https://github.com/seg/tutorials-2017/blob/master/1704_Getting_started_with_CSEM/Notebook.ipynb)
 
+## June 2017
+- [Seismic rock physics](http://library.seg.org/doi/abs/10.1190/tle36060523.1) by Alessandro Amato del Monte
+- [Jupyter Notebook](https://github.com/seg/tutorials-2017/blob/master/1706_Seismic_rock_physics/seismic_rock_physics.ipynb)
+
+## August 2017
+- [Exploring nonlinear inversions: A 1D magnetotelluric example](http://library.seg.org/doi/abs/10.1190/tle36080696.1) by Seogi Kang, Lindsey J. Heagy, Rowan Cockett, and Douglas W. Oldenburg
+- Jupyter Notebooks
+    - [1_MT1D_NumericalSetup.ipynb](1708_Nonlinear inversion/1_MT1D_NumericalSetup.ipynb)
+    - [2_MT1D_ForwardModellingAndNonuniqueness.ipynb](1708_Nonlinear inversion/2_MT1D_ForwardModellingAndNonuniqueness.ipynb)
+    - [3_MT1D_5layer_inversion.ipynb](1708_Nonlinear inversion/3_MT1D_5layer_inversion.ipynb)
+
 <hr />
 
 The content of the articles and of the notebooks is © the author(s) and openly licensed [CC-BY-SA](https://creativecommons.org/licenses/by-sa/3.0/). The code is © the author(s) and openly licensed under the terms of the Apache License 2, or under the terms specified by the author, if any.
