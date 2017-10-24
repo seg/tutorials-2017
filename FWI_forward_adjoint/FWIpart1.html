@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="generator" content="scholpandoc">
+  <meta name="viewport" content="width=device-width">
+  
+  <title>Full-Waveform Inversion - Part 1: forward and adjoint modeling</title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.7.1/modernizr.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/respond.js/1.4.2/respond.js"></script>
+  <style type="text/css">
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #007020; font-weight: bold; }
+code > span.dt { color: #902000; }
+code > span.dv { color: #40a070; }
+code > span.bn { color: #40a070; }
+code > span.fl { color: #40a070; }
+code > span.ch { color: #4070a0; }
+code > span.st { color: #4070a0; }
+code > span.co { color: #60a0b0; font-style: italic; }
+code > span.ot { color: #007020; }
+code > span.al { color: #ff0000; font-weight: bold; }
+code > span.fu { color: #06287e; }
+code > span.er { color: #ff0000; font-weight: bold; }
+  </style>
+  <link rel="stylesheet" href="https://www.slim.eos.ubc.ca/Publications/Resources/ScholMD/standalone/slimweb-scholmd-standalone-v0.1-latest.min.css">
+</head>
+<body>
+<div class="scholmd-container">
+<div class="scholmd-main">
+<div class="math scholmd-math-definitions" style="visibility: hidden; height: 0px; width 0px;">\[
+\def\argmin{\mathop{\rm arg\,min}}
+\def\vec{\mbox{``\mathrm{vec}``}}
+\def\ivec{\mbox{``\mathrm{vec}^{-1}``}}
+\newcommand{\m}{{\mathsf{m}}}
+\newcommand{\PsDO}{\mbox{PsDO\,}}
+\newcommand{\Id}{\mbox{``\tensor{I}\,``}}
+\newcommand{\R}{\mbox{``\mathbb{R}``}}
+\newcommand{\Z}{\mbox{``\mathbb{Z}``}}
+\newcommand{\DE}{:=}
+\newcommand{\Order}{\mbox{``{\cal O}``}} \def\bindex#1{{\mathcal{#1}}}
+\def\pector#1{\mathrm{\mathbf{#1}}} 
+\def\cector#1{#1} 
+\def\censor#1{#1} 
+\def\vd#1{\mathbf{#1}}
+\def\fvector#1{{\widehat{\vd{#1}}}}
+\def\evector#1{{\widetilde{\vd{#1}}}}
+\def\pvector#1{{\breve{\vd{#1}}}}
+\def\pector#1{\mathrm{#1}}
+\def\ctensor#1{\bm{\mathcal{#1}}}
+\def\tensorm#1{\bm{#1}}
+\def\tensor#1{\vd{#1}}
+\def\hensor#1{\tensor{#1}}
+\def\uensor#1{\underline{\bm{#1}}}
+\def\hector#1{\vd{#1}}
+\def\ftensor#1{{\widehat{\tensor{#1}}}}
+\def\calsor#1{{\boldsymbol{\mathcal{#1}}}}
+\def\optensor#1{{\boldsymbol{\mathcal{#1}}}}
+\def\hvector#1{\hat{\boldsymbol{\mathbf{#1}}}}
+\def\minim{\mathop{\hbox{minimize}}}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert_2^2}
+\newcommand{\overbar}[1]{\mkern 1.5mu\overline{\mkern-1.5mu#1\mkern-1.5mu}\mkern 1.5mu}
+\]</div>
+<div class="scholmd-content">
+<header>
+<h1 class="scholmd-title">Full-Waveform Inversion - Part 1<span class="math scholmd-math-inline">\(:\)</span> forward and adjoint modeling</h1>
+<div class="scholmd-author">
+<p>Mathias Louboutin<sup>1</sup>*, Philipp Witte<sup>1</sup>, Michael Lange<sup>2</sup>, Navjot Kurjeka<sup>2</sup>, Fabio Luporini<sup>2</sup>, Gerard Gorman<sup>2</sup> and Felix J. Herrmann<sup>1,3</sup><br /><sup>1</sup> Seismic Laboratory for Imaging and Modeling (SLIM), The University of British Columbia<br /><sup>2</sup> Imperial College London, London, UK<br /><sup>3</sup> now at Georgia Institute of Technology, USA<br /></p>
+</div>
+</header>
+<p><span class="critic comment">Not sure where the order of the authors come from. Since you and Philipp are in my Lab and first authors, I suggest you put me last as is customary. You must also make sure that you get detailed input on this rewrite from all co-authors. Multiple times I suggested that the Python commands should be integrated more tightly to the text. Mathias really needs help from the other authors how to accomplish this. I think that the section in the Discretization would benefit mostly from this. I also took out all references to operators since this would only confuse the readers and should be left to part 2. Too much is left to the reader and that is not good for a tutorial like this.</span></p>
+<h2 id="introduction">Introduction</h2>
+<p>Full-waveform inversion (FWI) gained <del>tremendous</del><ins> a lot of</ins> attention in geophysical exploration since it was first introduced <span class="scholmd-citation" data-cites="Pratt">(Pratt, 1999)</span> <span class="critic comment">You need to say why just loose statement means nothing “because of its ….”</span>. However, the literature mostly contains specific and technical papers about applications and advanced <del>method</del><ins>methods</ins> and <ins> often </ins> lacks simple introductory resources for geophysical newcomers. Mathematical and geophysical FWI papers, as <span class="scholmd-citation" data-cites="Virieux">Virieux and Operto (2009)</span>, give excellent theoretical overviews, but typically <del>do not cover</del><ins>pay less attention to</ins> the implementation side of the problem. In this two part tutorial, we provide a hands-on walkthrough of FWI using Devito, a finite-difference domain-specific language that provides a concise and straightforward <del>interface</del><ins>computational framework</ins> for discretizing wave equations and generating <del>operators</del><ins>propagators</ins> for <ins> the </ins> forward and adjoint <del>modeling</del><ins>wave equation</ins>. <ins> Because Devito releases the user from …. , </ins> Devito (<span class="scholmd-citation" data-cites="lange2016dtg">(Lange et al., 2016)</span>) allows the user to concentrate on the geophysical side of the problem, rather than the low-level implementation details of a wave-equation simulator. This tutorial covers the conventional adjoint-state formulation of full-waveform tomography <span class="critic comment">Add ref</span> <ins> that underlies most of the current methods generally referred to as full-waveform inversion.</ins> <ins>While </ins> other <del>methods</del><ins>formulations</ins> <del>exist</del><ins>have been developed</ins> to improve the convergence properties of the algorithm, <ins> we will concentrate on the standard formulation that relies </ins> relies on <ins> the combination of a </ins> forward/adjoint pairs <ins> propagators and </ins> an correlation-based gradient <del>and should use the proposed framework</del><ins>calculations</ins>.</p>
+<ins>
+As part of this tutorial for FWI, we will first introduce
+</ins>
+<ul>
+<li>propagators that simulate <ins> forward modeled </ins> synthetic data, <ins> which we compare with </ins> <del>that can be compared to </del>field recorded data<ins>, and </ins></li>
+<li>adjoint <del>operator</del><ins>propagators</ins> that back-propagate the data residual <del>and compute the cross-correlation</del><ins>followed by gradient computations via cross-correlation of the forward and back-propagated wavefields.</ins> <span class="critic comment">I think there is redundancy here and suggest you merge these items with the text above.</span></li>
+</ul>
+<ins>
+To explain how FWI works,
+</ins>
+<p><del>We will illustrate the </del><ins>we describe a typical</ins>workflow on a <del>very</del> simplistic 2D model that can be run on a laptop or desktop PC. <ins> Unfortunately, </ins> larger and more realistic models come at a computational <ins> cost </ins> and memory <del>price</del><ins>requirements</ins> that <del>are</del><ins>easily go</ins> beyond <del>of</del> the <del>scope of </del><ins>the type of hardware people will have available to reproduce the results presented in </ins>this tutorial. <ins>However,</ins> the workflow we describe <ins> is general enough that it easily </ins> translates to <ins> much larger </ins> velocity models in 2D and 3D and <ins> to </ins> <del>any type of </del> <ins> more complicated </ins> wave equations <del>with</del><ins>as long as their adjoints are known.</ins> <span class="critic comment">Please add ref.</span> <ins>For maximal access to our software framework, we divided the aforementioned workflow into the following Python notebooks (available at url):</ins></p>
+<del>
+The workflow for full-waveform inversion, and the corresponding notebooks, is the following:
+</del>
+<p><span class="critic comment">I renamed the note books since it is completely confusing. Split into forward modeling; adjoint modeling + residual calculation, gradient calculation.</span></p>
+<ul>
+<li><p><strong>[forward_modeling.ipynb]</strong> <span class="critic comment">Make this an active link</span> — in this notebook we describe how to simulate synthetic data and how to save the corresponding wavefields;</p></li>
+<li><p><strong>[adjoint_modeling.ipynb]</strong> — here we demonstrate how to compute the data residual—i.e., the difference between the synthetic and observed data how to back-propagate this residual wavefield with a propagator computed with the adjoint wave equation that acts on the residual;</p></li>
+<li><p><strong>[gradient.ipynb]</strong> — here we describe how we calculate the gradient by cross-correlation of the forward and adjoint wavefields over time. In this notebook, we also show how to repeat this for all sources, at the different iterations of simple gradient descent algorithm.</p></li>
+</ul>
+<del>
+We start with the description of a modeling operator and then move on to the adjoint operator and gradient for FWI.
+</del>
+<p><span class="critic comment">Redundant</span> <ins> We refer to Part 2 of this tutorial, for a more complete description on how to minimize FWI objectives and how to gain matrix-free access to the Jacobian and (Gauss-Newton) Hessian of FWI.</ins></p>
+<del>
+A complete tutorial on how to optimize the FWI objective function, once the computational framework is in place, will be covered in the second part. This tutorials is linked to three notebooks that detail each step of the implementation from modeling to FWI. For clarity purposes, some details will be left out of the article but are fully detailed in the corresponding notebooks.
+</del>
+<h2 id="modellingwave-simulations-for-inversion"><del>Modelling</del><ins>Wave simulations for inversion</ins></h2>
+<p>The acoustic wave equation for the squared slowness <span class="math scholmd-math-inline">\(m\)</span>, defined as <span class="math scholmd-math-inline">\(m=\frac{1}{c^2}\)</span> with <span class="math scholmd-math-inline">\(c\)</span> being the speed of sound, and a source <span class="math scholmd-math-inline">\(q\)</span> is given by: 
+<span class="math scholmd-math-display" style="display: block;">\[
+\begin{equation}
+ m \frac{d^2 u(x,t)}{dt^2} - \nabla^2 u(x,t) + \eta \frac{d u(x,t)}{dt}=q 
+\label{WE}
+\end{equation}
+\]</span>
+ where <span class="math scholmd-math-inline">\(\eta\)</span> is the dampening parameter for the absorbing boundary layer <span class="scholmd-citation" data-cites="Cerjan">(Cerjan et al., 1985)</span>. The physical model is extended in every direction by <code>nbpml</code> grid points to mimic an infinite domain and the dampening term <span class="math scholmd-math-inline">\(\eta \frac{d u(x,t)}{dt}\)</span> attenuates the waves in the dampening layer <span class="scholmd-citation" data-cites="Cerjan">(Cerjan et al., 1985)</span>. In Devito, the physical parameters <span class="math scholmd-math-inline">\(m\)</span> and <span class="math scholmd-math-inline">\(\eta\)</span> are contained in the <code>model</code> object with the relevant information such as the origin, grid spacing and size.</p>
+<pre class="sourceCode python"><code class="sourceCode python">    <span class="co"># Define a Devito model with physical size, velocity vp </span>
+    <span class="co"># and absorbing layer width in number of grid points</span>
+    model = Model(origin, spacing, shape, vp, nbpml=nbpml)</code></pre>
+<p>The model parameters are illustrated on Figure <span class="scholmd-crossref"><a href="#model">1</a></span>.</p>
+<figure class="scholmd-float scholmd-figure" id="model">
+<div class="scholmd-float-content"><figure class="scholmd-subfig" style="display: inline-block; width: ">
+<img src="Figures/setup.png" />
+</figure></div>
+<div class="scholmd-float-caption"><figcaption><span class="scholmd-caption-head"><span class="scholmd-caption-head-prefix">Figure</span><span class="scholmd-caption-head-label">1</span></span><span class="scholmd-caption-text">Representation of the model.</span></figcaption></div>
+</figure>
+<p><mark> doesn’t show but all this until discretization section is removed</mark> <del><ins>In this formulation, we included</ins> zero initial conditions to guarantee <mark>unicity</mark> <span class="critic comment">What is this. Is this the right language for a tutorial?</span> of the solution. <del>The</del><ins>These</ins> boundary conditions <del>are</del><ins>correspond to</ins> Dirichlet conditions <ins> given by </ins> <span class="critic comment">Is this really needed this language will piss the geop community off unnecessarily. Know your audience!!!!</span> u(x,t)|_{} = 0 where <span class="math scholmd-math-inline">\(\delta\Omega\)</span> is the surface of the boundary of the model <span class="math scholmd-math-inline">\(\Omega\)</span>.</del><del> <span class="critic comment">I am missing a clear connection between these conditions and what you describe in the paragraph below. It is your responsibility to make this very clear to the reader! It is not enough to just do a brain dump and have the reader connect the dots.</span> <ins>Aside from these ….</ins> the field, seismic wave propagate in all directions in an “infinite” medium. However, solving the wave equation in a mathematically/discrete infinite domain is not feasible. <del>Therefore,</del><ins>For this reason, we use,</ins> <span class="critic comment">How many times have we told you to avoid passive tense!</span> Absorbing Boundary Conditions (ABC) or Perfectly Matched Layers (PML) {–are used</del> in practice to mimic an infinite domain. <ins>The two methods</ins> <span class="critic comment">Again connection is not clear? What are these two methods and are they both necessary?</span> allow <ins> us </ins> to approximate an infinite medium by <mark>damping and absorbing </mark> <span class="critic comment">unclear what is causing what</span> the waves at the <mark>limit of</mark> <span class="critic comment">What is this the edges? Unclear</span> the domain to avoid reflections <ins>from the boundaries that may introduce unphysical prismatic waves.</ins></p>
+<p><mark>The simplest of these methods is the absorbing damping mask.</mark> <span class="critic comment">I really not know why you are introducing these “two” methods. I am afraid it does nothing but confuse. Take out.</span> The core idea is to extend the physical domain and to add a sponge <del>mask</del><ins>layer</ins> <span class="critic comment">This is not a mask.</span> in this extension that will absorb the incident waves. In our case, we use ABC where <span class="math scholmd-math-inline">\(\eta\)</span> is the damping mask equal to <span class="math scholmd-math-inline">\(0\)</span> inside the physical domain and increasing inside the sponge layer. Multiple choice of profile can be chosen for <span class="math scholmd-math-inline">\(\eta\)</span> from linear to exponential <span class="scholmd-citation" data-cites="Cerjan">(Cerjan et al., 1985)</span>.</p>
+<p><span class="critic comment">I am sorry but the paragraph above is incomprensible. There are issues w/ the English and also just plain explanatory issues. The reader will not know what <span class="math scholmd-math-inline">\(\eta\)</span> is for instance. I suggest Philipp or others come with an acceptable reformulation of the two above paragraphs so it is crystal clear what is going on.</span>–}</p>
+<h3 id="discretization">Discretization</h3>
+<ins>
+As we mentioned earlier,
+</ins>
+<p>we discretize the wave equation with Devito, a finite-difference DSL that <ins> is designed to define and solve </ins> <del>solves the</del> <del>discretized</del><ins>discrete</ins> wave-equations on <del>a</del> Cartesian grids. <ins> To arrive at the discretized wave equation, we use </ins> <del>The</del> finite-difference approximations <del>is</del> derived from Taylor expansions of the continuous <del>field</del><ins>wavefields as they appear in Equation and</ins> after removing the error term <span class="critic comment">Is this really to only reference that is relevant? Hard to belief. Also doe the readership of this tutorial any idea what this error term is and is it relevant?</span> .</p>
+<p>The first step <ins> in our discretization </ins> is to define a symbolic representation of the discrete wavefield. In Devtio, this is <del>represented</del><ins>done</ins> by <ins> instantiating </ins> a <code>TimeData</code> <span class="critic comment">Use single quotes for programmatic objects so they are not confused w/ math symbols. Fix throughout!</span> object <del>and</del><ins>that</ins> contains all <ins> necessary/relevant </ins> information for the discretization <del>such a</del><ins>including </ins> discretization orders in space and time<ins>—i.e., we run the following line in our notebook:</ins></p>
+<pre class="sourceCode python"><code class="sourceCode python">    u = TimeData(name=<span class="st">&quot;u&quot;</span>, shape=model.shape_domain, time_order=<span class="dv">2</span>, space_order=<span class="dv">2</span>, save=<span class="ot">True</span>, time_dim=nt)</code></pre>
+<ins>
+To avoid unnecessary complications, we use
+</ins>
+<p>a second-order discretization in time. <del>, which is the most commonly used time discretization.</del> From the Taylor expansion of the continuous wavefield <span class="math scholmd-math-inline">\(u\)</span> in time, the second order discrete approximation of the second-order time derivative as a function of the discrete wavefield <span class="math scholmd-math-inline">\(\vd{u}\)</span> is <ins> given by </ins> <span class="critic comment">I am sorry but the notation is completely confusing since it mixes continuous and discrete (bold) quantities. There are also typos in the equations below and unnecessary repetition. I suggest this is cleaned up and presented in a way that is appropriate for the audience.</span> 
+<span class="math scholmd-math-display" style="display: block;">\[
+\begin{equation}
+ \frac{d^2 u(i \Delta t)}{dt^2} = \frac{\vd{u}[i+1] - 2 \vd{u}[i] + \vd{u}[i-1]}{\Delta t^2} + \mathcal{O}(\Delta t^2).
+\label{timedis}
+\end{equation}
+\]</span>
+ and the finite-difference approximation is 
+<span class="math scholmd-math-display" style="display: block;">\[
+\begin{equation*}
+    \vd{\ddot{u}}[i] =  \frac{\vd{u}[i+1] - 2 \vd{u}[i] + \vd{u}[i-1]}{\Delta t^2}.
+\end{equation*}
+\]</span>
+ <del>where <span class="math scholmd-math-inline">\(\vd{u}\)</span> is the discrete wavefield, <ins> The </ins></del> <span class="math scholmd-math-inline">\(\Delta t\)</span> is the discrete time-step (distance between two consecutive discrete times). <del>and <span class="math scholmd-math-inline">\(\mathcal{O}(\Delta t^2)\)</span> is the discretization error term. <mark>The discretized approximation of the second order time derivative is then given by dropping the error term. </mark> <span class="critic comment">I am sorry but this is confusing to me </span></del> <ins> In Devito, we represent </ins> this time derivative <ins> symbolically as </ins> <code>u.dt2</code>.</p>
+<p>Apart from the temporal derivative, the acoustic wave equation <ins> also </ins> contains spatial <del>(second) </del> derivatives. <ins> For the constant density acoustic wave equation, the spatial derivative involve the action of the Laplacian </ins><del>We therefore define the discrete Laplacian </del><span class="math scholmd-math-inline">\(\Delta \vd{u}[i]\)</span>, which after discretization we define as the sum of second- order spatial derivatives <del>in the three </del> <ins> along the Cartesian coordinate directions. </ins> <del>dimensions</del>. Each second<ins> -order </ins> spatial derivative <ins> itself </ins> is discretized <del>with</del><ins>by</ins> a <span class="math scholmd-math-inline">\(k^{th}\)</span> order finite-difference <del>scheme</del><ins>approximation</ins> (<code>space_order=k</code> in the <code>TimeData</code> object <del>creation</del><ins>instantiation</ins>) and also derive from <ins> the </ins> Taylor expansion <span class="critic comment">Is this redundant?</span>. <ins> We represent </ins> the Laplacian <del>is represented </del> in Devito by <code>u.laplace</code>. <del>and <ins> we </ins> follow the same theoretical derivation as in Equation <span class="scholmd-crossref"><span class="math scholmd-math-inline">\(\ref{timedis}\)</span></span> applied to the space variables <span class="math scholmd-math-inline">\(x,y,z\)</span>. <span class="critic comment">I am afraid I am not following the last part of this sentence.</span></del></p>
+<p>With the space and time discretization defined, we can <ins> now </ins> <del>fully</del> <ins> automatically instantiate the <code>Stencil</code> objects, which will later be used to automatically generate executable C code. <code>Stencil</code> implements the action of a single timestep according to our discretization scheme, which is second order in time and <span class="math scholmd-math-inline">\(k^{th}\)</span> order in space—i.e., mathematically we generate executable code that implements the following expression:</ins></p>
+<del>
+discretize the wave-equation with the combination of the temporal and spatial discretizations and obtain the following second order in time and <span class="math scholmd-math-inline">\(k^{th}\)</span> order in space discrete stencil to update one grid point at position <span class="math scholmd-math-inline">\(x,y,z\)</span> at time <span class="math scholmd-math-inline">\(t\)</span>:
+</del>
+<p><span class="critic comment">How often do you need to be told to not be so incredible sloppy w/ math notation. Your co-authors should not have to tell you that <span class="math scholmd-math-inline">\(\Delta t\)</span> should not be bold. This sort of lack of attention to detail sends a very negative message I am afraid and you need to train yourself to fix these things yourself certainly if this has been mentioned to you before.</span> 
+<span class="math scholmd-math-display" style="display: block;">\[
+\begin{equation}
+\vd{u}[i+1] = 2\vd{u}[i] - \vd{u}[i] + \frac{\Delta t^2}{\vd{m}} \Big(\Delta \vd{u}[i]+ \vd{q}[i] \Big). 
+\label{WEdis}
+\end{equation}
+\]</span>
+ for each <span class="math scholmd-math-inline">\(i\)</span> in the interval <span class="math scholmd-math-inline">\([0, n_t]\)</span>. <del><span class="critic comment">Is this expression correct??????</span></del></p>
+<h3 id="setting-up-the-acquisition-geometry">Setting up the acquisition geometry</h3>
+<ins>
+In Devito, we model monopole sources/receivers with the object <code>PointData</code>, which includes methods that interpolate between the computational grid on which the wave equation is discretized and possibly off-the-grid source/receiver locations. The code that implements the definition of <code>101</code> receiver and one source with locations collected in the arrays <code>rec_coords</code> and <code>src_coords</code> reads as
+</ins>
+<p><span class="critic comment">I removed the terms operators since many people will not know what you mean with this. I think we also should leave the definition of linear operators that do this for part 2. So for now I just refer to them as source and receiver arrays.</span></p>
+<pre><code>    # create receiver array from receiver coordinates
+    rec = Receiver(name=&#39;rec&#39;, npoint=101, ntime=nt, ndim=2, coordinates=rec_coords)
+    rec_term = rec.interpolate(u, offset=model.nbpml)
+    
+    # define source injection array for given a source wavelet, coordinates and frequency
+    src = RickerSource(name=&#39;src&#39;, ndim=2, f0=f0, time=time, coordinates=src_coords)
+    src_term = src.inject(field=u.forward, expr=src * dt**2 / model.m, offset=model.nbpml)</code></pre>
+<p><span class="critic comment">What is this offset?????</span></p>
+<p>where <code>dt**2 / model.m</code> is derived from equation <span class="scholmd-crossref"><span class="math scholmd-math-inline">\(\ref{WEdis}\)</span></span> and offset is the size of the absorbing layer as displayed on Figure <span class="scholmd-crossref"><a href="#model">1</a></span> (source position shifted by <code>offset</code>).</p>
+<h3 id="wave-equation-stencil">Wave equation stencil</h3>
+<del>
+Using
+</del>
+<ins>
+In
+</ins>
+<p>Devito, we can directly translate <ins> <del>this</del> expression <span class="scholmd-crossref"><span class="math scholmd-math-inline">\(\ref{WEdis}\)</span></span>, and therefore create executable code by issuing the following commands in our notebook: </ins> <del>the discretized wave equation into a symbolic expression and define a <code>stencil</code> expression, which defines the update for the new wavefield at each time step:</del></p>
+<pre class="sourceCode python"><code class="sourceCode python">    <span class="co"># Set up acoustic wave equation</span>
+    pde = model.m * u.dt2 - u.laplace + model.damp * u.dt
+    <span class="co"># Generation of the stencil</span>
+    stencil = Eq(u.forward, solve(pde, u.forward)[<span class="dv">0</span>])</code></pre>
+<p>where <code>u.forward</code> is a Devito shortcut for <span class="math scholmd-math-inline">\(\vd{u}[i+1]\)</span> <span class="critic comment">u.forward is not defined or I may have missed something.</span></p>
+<del>
+<ins>
+As we can see, this
+</ins>
+wave equation does not contain a source term and is solely defined through its initial conditions(<ins>see Equation</ins> <span class="scholmd-crossref"><span class="math scholmd-math-inline">\(\ref{WE}\)</span></span>). <ins>So </ins> to simulate an <ins> actual </ins> seismic experiment, we still need to <del>define
+</del>
+<ins>
+introduce
+</ins>
+<p>a seismic source, <del>i.e. a seismic wavelet which </del><ins>e.g. a monopole with a temporal source signature that</ins> is injected into the model at a predefined source location. <ins>Aside from injecting wavefield at one or more sources, we also need to extract wavefields at the receivers.</ins> <ins> Like sources, we treat these receivers as “monopole” sinks, which record the modeled wavefield as a function of time at predefined receiver locations. </ins> <span class="critic comment">In US English modeled is with one l so please change it everywhere.</span></del></p>
+<h3 id="forward-simulation">Forward simulation</h3>
+<p>With the source/receiver <del>projection operators</del><ins>geometry set</ins> and the wave-equation stencil, we can <ins> now </ins> define our <del>full modeling operator</del><ins>forward propagator</ins> by symbolically adding the source and receiver terms into our previously defined ‘Stencil’ object—i.e., we have</p>
+<pre class="sourceCode python"><code class="sourceCode python">    <span class="co"># Create forward propagator</span>
+    op_fwd_ = Operator([stencil] + src_term + rec_term,
+                  subs={t.spacing: dt, x.spacing: spacing[<span class="dv">0</span>],
+                        y.spacing: spacing[<span class="dv">1</span>]})</code></pre>
+<p>and shot records can be modeled by simply calling <code>op_fwd.apply()</code>. Once the propagator executed, the wavefield and shortrecord are accessed via:</p>
+<pre class="sourceCode python"><code class="sourceCode python">    wavefield = u.data
+    shotrecord = rec.data</code></pre>
+<p>In Figure <span class="scholmd-crossref"><a href="#Forward">2</a></span>, we show the resulting shot record. A movie of snapshots of the forward wavefield can be <del>found</del><ins>generated by executing </ins> the last cell of this notebook.</p>
+<figure class="scholmd-float scholmd-figure" id="Forward">
+<div class="scholmd-float-content"><figure class="scholmd-subfig" style="display: inline-block; width: 45%">
+<img src="Figures/shotrecord.pdf" />
+</figure></div>
+<div class="scholmd-float-caption"><figcaption><span class="scholmd-caption-head"><span class="scholmd-caption-head-prefix">Figure</span><span class="scholmd-caption-head-label">2</span></span><span class="scholmd-caption-text">Shot record on a two layer model for a single source and split-spread receiver geometry from <strong>modeling.ipynb</strong>.</span></figcaption></div>
+</figure>
+<h3 id="backward-simulation">Backward simulation</h3>
+<p><span class="critic comment">As I mentioned at more than one time during conversations you need to discuss the adjoint wavefield as well including a movie. This can be done very succinctly. </span></p>
+<p>The adjoint wave-equation is: 
+<span class="math scholmd-math-display" style="display: block;">\[
+\begin{equation}
+ m \frac{d^2 v(x,t)}{dt^2} - \nabla^2 v(x,t) - \eta \frac{d v(x,t)}{dt}= \delta \vd{d}
+\label{WEa}
+\end{equation}
+\]</span>
+ Implementation of the adjoint modeling is straightforward in the self-adjoint acoustic case (except for what happens at in the damping layer). The only detail to consider is to adjust the non self-adjoint boundary conditions, which corresponds simply to a change of sign. Using Devito, we can define the adjoint wave equation propagator in a similar manner injecting the data residual, <span class="math scholmd-math-inline">\(\delta \vd{d}=\vd{d}^{\mathrm{syn}}(\vd{m};\vd{q}) - \vd{d}^{\mathrm{obs}}\)</span>, as a source. <span class="critic comment">While this may be the case, I would STRONLY advice against this since it goes against the whole philosophy of Devito.</span></p>
+<pre class="sourceCode python"><code class="sourceCode python">    v = TimeData(name=<span class="st">&quot;v&quot;</span>, shape=model.shape_domain, time_order=<span class="dv">2</span>, space_order=<span class="dv">2</span>)
+    <span class="co"># Receiver setup</span>
+    rec = Receiver(name=<span class="st">&#39;rec&#39;</span>, npoint=<span class="dv">101</span>, ntime=nt, ndim=<span class="dv">2</span>, coordinates=rec_coords)
+    
+    <span class="co"># This lime comes from nowhere and is incomprehensible.</span>
+    rec_term = rec.inject(field=v.backward,  expr=rec * dt**<span class="dv">2</span> / model.m, offset=model.nbpml)
+    
+    <span class="co"># Define adjoint wave equation</span>
+    pde = model.m * v.dt2 - v.laplace + model.damp * v.dt
+    stencil_v = Eq(v.backward, solve(pde, v.backward)[<span class="dv">0</span>])
+    
+    <span class="co"># Create propagator</span>
+    op_adj = Operator([stencil_v] + src_term + rec_term,
+                  subs={t.spacing: dt, x.spacing: spacing[<span class="dv">0</span>],
+                        y.spacing: spacing[<span class="dv">1</span>]},
+                        time_axis=Backward)</code></pre>
+<p>An animation of the adjoint wavefield is available in <strong>[adjoint_modeling.ipynb]</strong>.</p>
+<h2 id="objective-and-gradient">Objective and gradient</h2>
+<p>Full-waveform inversion aims <del>at recovering </del><ins>to recover</ins> accurate <ins> estimates for the </ins> the discrete wave slowness vector, <span class="math scholmd-math-inline">\(\vd{m} = \vd{c}^{-2}\)</span>, from a given set of measurements of the pressure wavefield <span class="math scholmd-math-inline">\(\vd{u}\)</span>. Following <span class="scholmd-citation" data-cites="LionsJL1971">(Lions, 1971, <span class="scholmd-citation" data-cites="Virieux">Virieux and Operto (2009)</span>, <span class="scholmd-citation" data-cites="haber10TRemp">Haber et al. (2012)</span>, <span class="scholmd-citation" data-cites="Tarantola">Tarantola (1984)</span>)</span>, <ins> inversion process corresponds to minimizing the following FWI objective:</ins> 
+<span class="math scholmd-math-display" style="display: block;">\[
+\begin{equation}
+\begin{split}
+    \mathop{\hbox{minimize}}_{\vd{m}} f(\vd{m})=\frac{1}{2}\left\lVert \vd{d}^{\mathrm{syn}}(\vd{m};\vd{q}) - \vd{d}^{\mathrm{obs}}\right\rVert_2^2,\\
+\end{split}
+\label{FWI}
+\end{equation}
+\]</span>
+ where <span class="math scholmd-math-inline">\(\vd{d}^{\mathrm{syn}}(\vd{m};\vd{q})\)</span> is the synthetic data, which depends on the unknown slowness vector <span class="math scholmd-math-inline">\(\vd{m}\)</span> and the discretized source function <span class="math scholmd-math-inline">\(\vd{q}\)</span>, which we assume to be known. FWI aims to find a slowness vector <span class="math scholmd-math-inline">\(\vd{m}\)</span> that minimizes the energy between synthetic data and data measured in the field collected in the vector <span class="math scholmd-math-inline">\(\vd{d}\)</span>.</p>
+<p>We minimize this objective by computing updates to the slowness that are given by the gradient of FWI objective with respect to <span class="math scholmd-math-inline">\(\vd{m}\)</span>. Following work by (add refs), this gradient is given by the zero-lag term of the cross-correlation between the second time derivative of the forward wavefield, <span class="math scholmd-math-inline">\(\vd{\ddot{u}}\)</span> and the adjoint wavefield, <span class="math scholmd-math-inline">\(\vd{v}\)</span>,—i.e. we have 
+<span class="math scholmd-math-display" style="display: block;">\[
+\begin{equation}
+ \nabla f(\vd{m};\vd{q})= - \sum_{{i} =1}^{n_t}\vd{\ddot{u}}[i]\odot \vd{v}[i],
+\label{FWIgrad}
+\end{equation}
+\]</span>
+ where the sum runs over all <span class="math scholmd-math-inline">\(n_t\)</span> time samples and <span class="math scholmd-math-inline">\(\odot\)</span> represents element-wise multiplication of two vectors that contain the spatial variations of the wavefield at discrete time index <span class="math scholmd-math-inline">\(t\)</span>.</p>
+<del>
+The partial derivative of the modeling operator <span class="math scholmd-math-inline">\(\frac{d \vd{A}(\vd{m}) \vd{u}}{d\vd{m}}\)</span> in Equation #FWIgradLA is simply the second time derivative, since <span class="math scholmd-math-inline">\(\vd{m}\)</span> appears only in front of this term (equation <span class="scholmd-crossref"><span class="math scholmd-math-inline">\(\ref{WEdis}\)</span></span>). The parameter <span class="math scholmd-math-inline">\(n_t\)</span> is the number of computational time steps, <span class="math scholmd-math-inline">\(\delta\vd{d} = \left(\vd{P}_r \vd{u} - \vd{d} \right)\)</span> is the data residual (difference between the measured data and the modeled data), <span class="math scholmd-math-inline">\(\vd{J}\)</span> is the Jacobian (i.e. the linearized modeling or demigration operator) and <span class="math scholmd-math-inline">\(\vd{u}_{tt}\)</span> is the second-order time derivative of the forward wavefield solving <span class="scholmd-crossref"><span class="math scholmd-math-inline">\(\ref{linWE}\)</span></span>.
+</del>
+<h3 id="computing-the-gradient">Computing the gradient</h3>
+<p>While the derivation of the above expression for the gradient goes beyond the scope of this tutorial, it important to emphasize how the forward and adjoint wavefields are calculated with the forward and backward simulations introduced above. Mathematically, forward simulation to compute the forward wavefield <span class="math scholmd-math-inline">\(\vd{u}\)</span> for each source involves the the solution of the following linear system of equations: 
+<span class="math scholmd-math-display" style="display: block;">\[
+\begin{equation}
+    \vd{A}(\vd{m}) \vd{u} = \vd{q}, 
+\label{linWE}
+\end{equation}
+\]</span>
+ where <span class="math scholmd-math-inline">\(\vd{q}\)</span> represents the known source. With the previous definition for the sources, solving this system corresponds in Devito to running the following commands:</p>
+<p><code>op_fwd.apply()</code> <span class="critic comment">Python code to compute u and then second derivative of u goes here.</span></p>
+<p>Solutions for the corresponding adjoint wavefields, <span class="math scholmd-math-inline">\(\vd{v}\)</span>, are computed in a similar fashion 
+<span class="math scholmd-math-display" style="display: block;">\[
+\begin{equation}
+    \vd{A}(\vd{m})^\top \vd{v} = \delta \vd{d}.
+\label{adjWE}
+\end{equation}
+\]</span>
+</p>
+<del>
+where the adjoint source is computed by injecting the data residual, <span class="math scholmd-math-inline">\(\delta \vd{d}=\vd{d}^{\mathrm{syn}}(\vd{m};\vd{q}) - \vd{d}^{\mathrm{obs}}\)</span>, as a source.
+</del>
+<p>In this expression, we obtain the expression for the backward propagating wavefield by transposing (denoted by the symbol <span class="math scholmd-math-inline">\(^\top\)</span>) the linear system associated with the forward simulations. <del>To avoid numerical instability associated with the damping in the boundary, we … </del></p>
+<p>In Devito, the computation of the adjoint wavefield is carried out by</p>
+<p><code>op_ad.apply()</code></p>
+<p><span class="critic comment">The Python code is very confusing since it in par uses the same name for certain “variables”. Also you use u instead of v and you are running the forward equation backwards while it would make more sense to actually generate a separate code for the adjoint as outlined in the section above. </span></p>
+<del>
+Solving the wave-equation is equivalent to solving the linear system <span class="math scholmd-math-inline">\(\vd{Au}=\vd{q}\)</span> where the vector <span class="math scholmd-math-inline">\(\vd{u}\)</span> is the discrete wavefield solution of the discrete wave-equation, <span class="math scholmd-math-inline">\(\vd{q}\)</span> is the source term and <span class="math scholmd-math-inline">\(\vd{A}\)</span> is the matrix representation of the discrete wave-equation. From Equation <span class="scholmd-crossref"><span class="math scholmd-math-inline">\(\ref{WEdis}\)</span></span> we can see that the matrix <span class="math scholmd-math-inline">\(\vd{A}\)</span> is a lower triangular matrix that reflects the time-marching structure of the stencil. Simulation of the wavefield is equivalent to a forward elimination on the lower triangular matrix <span class="math scholmd-math-inline">\(\vd{A}\)</span>. The adjoint of <span class="math scholmd-math-inline">\(\vd{A}\)</span>, denoted as <span class="math scholmd-math-inline">\(\vd{A}^T\)</span>, is then an upper triangular matrix and the solution <span class="math scholmd-math-inline">\(\vd{v}\)</span> of the discrete adjoint wave-equation <span class="math scholmd-math-inline">\(\vd{A}^\top\vd{v}=\vd{q}_a\)</span> for an adjoint source <span class="math scholmd-math-inline">\(\vd{q}_a\)</span> is equivalent to a backward elimination on the upper triangular matrix <span class="math scholmd-math-inline">\(\vd{A}\top\)</span> and is simulated backward in time starting from the last time-step. These matrices are never explicitly formed, but are instead matrix free operators with implicit implementation of <span class="math scholmd-math-inline">\(\vd{u}=\vd{A}^{-1}\vd{q}\)</span>.
+</del>
+<p><span class="critic comment">All nice but irrelevant for a tutorial.</span></p>
+<del>
+Implementation of the adjoint modeling is straightforward in the self-adjoint acoustic case (except for what happens at in the damping layer). The only detail to consider is to adjust the non self-adjoint boundary conditions, which corresponds simply to a change of sign. Using Devito, we can define the adjoint wave equation in the same fashion as the forward equation: <span class="critic comment">While this may be the case, I would STRONLY advice against this since it goes against the whole philosophy of Devito.</span>
+</del>
+<p>When calculating the gradient, we need as explained in Equation <span class="scholmd-crossref"><span class="math scholmd-math-inline">\(\ref{FWIgrad}\)</span></span> to simply sum the pointwise multiplication of the adjoint wavefield with the second-time derivative of the forward wavefield. In Devito, this is symbolically expressed by <code>grad_update = Eq(grad, grad - u.dt2 * v)</code>. The full script for calculating the gradient is given in the notebook <strong>adjoint_gradient.ipynb</strong>. The computation of the gradient is implemented adding the gradient update expression to the adjoint propagator:</p>
+<pre class="sourceCode python"><code class="sourceCode python">    op_grad = Operator([stencil_v_] + src_term + rec_term + grad_update,
+                  subs={t.spacing: dt, x.spacing: spacing[<span class="dv">0</span>],
+                        y.spacing: spacing[<span class="dv">1</span>]},
+                        time_axis=Backward)</code></pre>
+<p>Before we take a look at what the gradient for our test model looks like, we frist want to ensure that our implementations of the forward and adjoint wave equations are in fact a correct forward-adjoint pair. Not having correct adjoints can lead to wrong gradients, which in turn may lead to convergence to a wrong solution, or to slower convergence. To ensure that the discretized wave equations and associated propagators are implemented correctly, they need to pass the so-called <strong>dot</strong> and <strong>gradient</strong> tests, which can be found in the Devito test <strong>tests/test_adjointA.py</strong> and <strong>tests/test_gradient.py</strong>.</p>
+<p>Having tested the forward/adjoint wave equations, we can now calculate the gradient of the FWI objective function for a simple 2D test model. The Camembert model consists of a constant medium with a circular high velocity zone in its centre and we perform a transmission experiment, with the source on one side of the model and receivers at the other side. The gradient for a constant starting model (without the circular perturbation) looks as follows:</p>
+<figure class="scholmd-float scholmd-figure" id="Gradient">
+<div class="scholmd-float-content"><figure class="scholmd-subfig" style="display: inline-block; width: 45%">
+<img src="Figures/banana.pdf" />
+<div class="scholmd-float-subcaption"><figcaption><span class="scholmd-caption-text">Gradient for a transmission camembert model and a single source-receiver pair</span></figcaption></div>
+</figure><figure class="scholmd-subfig" style="display: inline-block; width: 45%">
+<img src="Figures/simplegrad.pdf" />
+<div class="scholmd-float-subcaption"><figcaption><span class="scholmd-caption-text">Gradient for a transmission camembert model and a sfull shot record</span></figcaption></div>
+</figure></div>
+<div class="scholmd-float-caption"><figcaption><span class="scholmd-caption-head"><span class="scholmd-caption-head-prefix">Figure</span><span class="scholmd-caption-head-label">3</span></span><span class="scholmd-caption-text">Gradients for a simple camembert transmission model <strong>adjoint_gradient.ipynb</strong>.</span></figcaption></div>
+</figure>
+<p>Finally, with the gradient implemented, we can easily setup the FWI objective function that can be used in an optimization toolbox as we will show in the next part of the tutorial. A example of an FWI objective function is given in cell 18 of <strong>adjoint_gradient.ipynb</strong>.</p>
+<h2 id="conclusions">Conclusions</h2>
+<p>The first part of the tutorial demonstrated how to set up forward and adjoint wave equations and calculate the gradient of the FWI objective function with the adjoint state method. In the second part we will demonstrate how to set up an easy optimization framework that allows to solve FWI with gradient-based optimization algorithms.</p>
+<h3 id="installation">Installation</h3>
+<p>This tutorial and the coming second part are based on Devito version 3.0.3. It also require to install the full software with examples, not only the code generation API. To install devito</p>
+<pre><code>    git clone https://github.com/opesci/devito/tree/v3.0.3
+    cd devito
+    conda env create -f environment.yml
+    source activate devito
+    pip install -e .</code></pre>
+<h3 id="usefull-links">Usefull links</h3>
+<ul>
+<li><a href="http://www.opesci.org/">Devito documentation</a></li>
+<li><a href="https://github.com/opesci/Devito">Devito source code and examples</a></li>
+<li><a href="https://github.com/opesci/Devito/examples/seismic/tutorials">Tutorial notebooks with latest Devito/master</a></li>
+</ul>
+<h2 id="references">references</h2>
+<p></p>
+<style>
+    .scholmd-container {
+        padding-top: 60px !important;
+    }
+
+    #criticnav {
+      position: fixed;
+      z-index: 1100;
+      top: 0;
+      left: 0;
+      width: 100%;
+      border-bottom: solid 1px #696f75;
+      margin: 0;
+      padding: 0;
+      background-color: rgba(255,255,255,0.95);
+      color: #696f75;
+      font-size: 14px;
+      font-family: "Helvetica Neue", helvetica, arial, sans-serif !important
+    }
+
+    #criticnav ul {
+      list-style-type: none;
+      width: 90%;
+      margin: 0 auto;
+      padding: 0
+    }
+
+    #criticnav ul li {
+      display: block;
+      width: 15%;
+      min-width: 100px;
+      text-align: center;
+      padding: 5px 0 3px !important;
+      margin: 5px 2px !important;
+      line-height: 1em;
+      float: left;
+      text-transform: uppercase;
+      cursor: pointer;
+      -webkit-user-select: none;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0);
+      color: #777 !important
+    }
+
+    #criticnav ul li:before {
+      content: none !important
+    }
+
+    #criticnav ul li.active {
+      border: 1px solid #696f75
+    }
+
+    .original del {
+        
+            text-decoration: none;
+    }   
+
+    .original ins,
+    .original span.popover,
+    .original ins.break {
+        display: none;
+    }
+
+    .edited ins {
+        
+            text-decoration: none;
+    }   
+
+    .edited del,
+    .edited span.popover,
+    .edited ins.break {
+        display: none;
+    }
+
+    .original mark,
+    .edited mark {
+        background-color: transparent;
+    }
+
+    .markup mark {
+        background-color: #fffd38;
+        text-decoration: none;
+    }
+
+    .markup del {
+        background-color: rgba(183,47,47,0.4);
+        text-decoration: none;
+    }
+
+    .markup ins {
+        background-color: rgba(152,200,86,0.4);
+        text-decoration: none;
+    }
+
+    .markup ins.break {
+        display: block;
+        line-height: 2px;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .markup ins.break span {
+        line-height: 1.5em;
+    }
+
+    .markup .popover {
+        background-color: #e5b000;
+        color: #fff;
+    }
+
+    .markup .popover .critic.comment {
+        display: none;
+    }
+
+    .markup .popover:hover span.critic.comment {
+        display: block;
+        position: absolute;
+        width: 200px;
+        left: 30%;
+        font-size: 0.8em; 
+        color: #ccc;
+        background-color: #333;
+        z-index: 10;
+        padding: 0.5em 1em;
+        border-radius: 0.5em;
+    }
+
+    @media print {
+        #criticnav {
+            display: none !important
+        }
+    }
+}
+
+</style>
+<div id="criticnav">
+<ul>
+<li id="markup-button">
+Markup
+</li>
+<li id="original-button">
+Original
+</li>
+<li id="edited-button">
+Edited
+</li>
+</ul>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+<script type="text/javascript">
+
+    function critic() {
+
+        $('.scholmd-container').addClass('markup');
+        $('#markup-button').addClass('active');
+        $('ins.break').unwrap();
+        $('span.critic.comment').wrap('<span class="popover" />');
+        $('span.critic.comment').before('&#8225;');
+
+    }  
+
+    function original() {
+        $('#original-button').addClass('active');
+        $('#edited-button').removeClass('active');
+        $('#markup-button').removeClass('active');
+
+        $('.scholmd-container').addClass('original');
+        $('.scholmd-container').removeClass('edited');
+        $('.scholmd-container').removeClass('markup');
+    }
+
+    function edited() {
+        $('#original-button').removeClass('active');
+        $('#edited-button').addClass('active');
+        $('#markup-button').removeClass('active');
+
+        $('.scholmd-container').removeClass('original');
+        $('.scholmd-container').addClass('edited');
+        $('.scholmd-container').removeClass('markup');
+    } 
+
+    function markup() {
+        $('#original-button').removeClass('active');
+        $('#edited-button').removeClass('active');
+        $('#markup-button').addClass('active');
+
+        $('.scholmd-container').removeClass('original');
+        $('.scholmd-container').removeClass('edited');
+        $('.scholmd-container').addClass('markup');
+    }
+
+    var o = document.getElementById("original-button");
+    var e = document.getElementById("edited-button");
+    var m = document.getElementById("markup-button");
+
+    window.onload = critic;
+    o.onclick = original;
+    e.onclick = edited;
+    m.onclick = markup;
+
+</script>
+<div class="references">
+<p>Cerjan, C., Kosloff, D., Kosloff, R., and Reshef, M., 1985, A nonreflecting boundary condition for discrete acoustic and elastic wave equations: GEOPHYSICS, <strong>50</strong>, 705–708. doi:<a href="http://dx.doi.org/10.1190/1.1441945">10.1190/1.1441945</a></p>
+<p>Haber, E., Chung, M., and Herrmann, F. J., 2012, An effective method for parameter estimation with PDE constraints with multiple right hand sides: SIAM Journal on Optimization, <strong>22</strong>. Retrieved from <a href="http://dx.doi.org/10.1137/11081126X" class="uri">http://dx.doi.org/10.1137/11081126X</a></p>
+<p>Lange, M., Kukreja, N., Louboutin, M., Luporini, F., Zacarias, F. V., Pandolfo, V., … Gorman, G., 2016, Devito: Towards a generic finite difference DSL using symbolic python: 6th workshop on python for high-performance and scientific computing. doi:<a href="http://dx.doi.org/10.1109/PyHPC.2016.9">10.1109/PyHPC.2016.9</a></p>
+<p>Lions, J. L., 1971, Optimal control of systems governed by partial differential equations: (1st ed.). Springer-Verlag Berlin Heidelberg.</p>
+<p>Pratt, R. G., 1999, Seismic waveform inversion in the frequency domain, part 1: Theory and verification in a physical scale model: GEOPHYSICS, <strong>64</strong>, 888–901. doi:<a href="http://dx.doi.org/10.1190/1.1444597">10.1190/1.1444597</a></p>
+<p>Tarantola, A., 1984, Inversion of seismic reflection data in the acoustic approximation: GEOPHYSICS, <strong>49</strong>, 1259–1266. doi:<a href="http://dx.doi.org/10.1190/1.1441754">10.1190/1.1441754</a></p>
+<p>Virieux, J., and Operto, S., 2009, An overview of full-waveform inversion in exploration geophysics: GEOPHYSICS, <strong>74</strong>, WCC1–WCC26. doi:<a href="http://dx.doi.org/10.1190/1.3238367">10.1190/1.3238367</a></p>
+</div>
+</div>
+</div>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+    tex2jax: {
+      processClass: "math"
+    },
+    TeX: {
+        TagSide: "left",
+        TagIndent: "1.2em",
+        equationNumbers: {
+            autoNumber: "AMS"
+        },
+        Macros: {
+            ensuremath: ["#1",1],
+            textsf: ["\\mathsf{\\text{#1}}",1],
+            texttt: ["\\mathtt{\\text{#1}}",1]
+        }
+    },
+    "HTML-CSS": { 
+        scale: 100,
+        availableFonts: ["TeX"], 
+        preferredFont: "TeX",
+        webFont: "TeX",
+        imageFont: "TeX",
+        EqnChunk: 1000
+    }
+});
+</script>
+<script src="https://www.slim.eos.ubc.ca/MathJax/MathJax.js?config=TeX-AMS_HTML-full" type="text/javascript"></script>
+</div>
+</body>
+</html>
