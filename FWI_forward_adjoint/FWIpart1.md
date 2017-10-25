@@ -31,7 +31,7 @@ Here, ``\eta(x,y)`` is a space-dependent dampening parameter for the absorbing b
 ```python
 	# Define a Devito model with physical size, velocity vp 
 	# and absorbing layer width in number of grid points (nbpml)
-	model = Model(origin, spacing, shape, vp, nbpml=nbpml)
+	model = model = Model(vp=vp, origin=origin, shape=shape, spacing=spacing, nbpml=40)
 ```
 
 ####Figure: {#model}
@@ -172,7 +172,7 @@ In this first part of the tutorial, we demonstrated how to set up discretized fo
 This tutorial and the coming second part are based on Devito version 3.0.3. It also require to install the full software with examples, not only the code generation API. To install devito
 
 ```
-	git clone https://github.com/opesci/devito/tree/v3.0.3
+	git clone -b v3.0.3 https://github.com/opesci/devito
 	cd devito
 	conda env create -f environment.yml
 	source activate devito
