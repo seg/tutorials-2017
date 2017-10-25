@@ -57,7 +57,7 @@ Here, ``\eta(x,y)`` is a space-dependent dampening parameter for the absorbing b
 The primary design objective of Devito is to allow users to define
 complex matrix-free finite difference operators from high-level
 symbolic definitions, while employing automated code generation to
-create highly optimized low-level C code. For this urpose Devito uses
+create highly optimized low-level C code. For this purpose Devito uses
 the symbolic algebra package SymPy @Meurer17 to facilitate the
 automatic creation of derivative expressions, allowing the quick and
 efficient generation of high-order wave propagators with variable
@@ -83,7 +83,7 @@ user data:
   the entire data along the time axis.
 
 To demonstrate Devito's symbolic capabilities, let us consider a
-time-dependent function $u(t, x, y)$ representing the forward
+time-dependent function $\vd{u}(t, x, y)$ representing the forward
 wavefield. We can define this as a `TimeData` object in Devito as
 
 ```python
@@ -113,8 +113,8 @@ expressions for finite difference derivatives as:
 
 Using the automatic derivation of derivative expressions we can now
 implement a discretized expression for Equation #WE\ without the
-source term q(x,y,t;x_s, y_s)$, and using `DenseData` objects for
-$m(x, y)$ and `\eta(x, y)` provided by the `Model` utility simply as
+source term $q(x,y,t;x_s, y_s)$, and using `DenseData` objects for
+$\vd{m}(x, y)$ and $\vd{\eta}(x, y)$ provided by the `Model` utility simply as
 
 ```python
     # Set up discretized wave equation
@@ -122,15 +122,15 @@ $m(x, y)$ and `\eta(x, y)` provided by the `Model` utility simply as
 ```
 
 The shorthand expression `u.laplace` hereby denotes the Laplacian
-$\Delta u$, where the order of the resulting derivative stencil is
+$\Delta \vd{u}$, where the order of the resulting derivative stencil is
 defined by the `space_order` parameter used to create the symbol
 `u(t, x, y, z)`.
 
 The resulting expression, however, needs to be rearranged
-to update the forward stencil point $u(t+s, x, y)$, represented by
+to update the forward stencil point $\vd{u}(t+s, x, y)$, represented by
 the shorthand expression `u.forward`. For this we can use the SymPy
 utility function `solve` to create a stencil expression that defines
-the update of the wavefield $u$ during a single timestep.
+the update of the wavefield $\vd{u}$ during a single timestep.
 
 ```python
     # Generation of the stencil
