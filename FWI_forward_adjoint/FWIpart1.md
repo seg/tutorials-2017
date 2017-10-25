@@ -51,45 +51,90 @@ Here, ``\eta(x,y)`` is a space-dependent dampening parameter for the absorbing b
 ![Model](Figures/setup.png){}
 : Representation of the computational domain and its extension, which contains the absorbing boundaries layer.
 
-### Discretization
 
-As we mentioned earlier, we discretize the wave equation with Devito, a finite-difference DSL that is designed to define and solve discrete wave-equations on Cartesian grids. To arrive at the discretized wave equation, we use finite-difference approximations derived from Taylor expansions of the continuous wavefield as it appears in Equation #WE\. The first step in our discretization is to define a symbolic representation of the discrete wavefield. In Devito, this is done by instantiating a `TimeData` object, that contains information necessary for the discretization including discretization orders in space and time. To instantiate this object, we run the following line in our notebook:
+### Symbolic definition of the wave propagator
+
+The primary design objective of Devito is to allow users to define
+complex matrix-free finite difference operators from high-level
+symbolic definitions, while employing automated code generation to
+create highly optimized low-level C code. For this urpose Devito uses
+the symbolic algebra package SymPy @Meurer17 to facilitate the
+automatic creation of derivative expressions, allowing the quick and
+efficient generation of high-order wave propagators with variable
+stencil orders.
+
+At the core of Devito's symbolic API are two symbolic types that
+behave like a `sympy.Function` objects, while also managing
+user data:
+
+* `DenseData` objects represent a spatially varying function
+  discretized on a regular cartesian grid. For example, a function
+  symbol `f = DenseData(name='f', shape=(nx, ny), space_order=2)`
+  is denoted symbolically as `f(x, y)`. Auto-generated symbolic
+  expressions for finite difference derivatives are provided by these
+  objects via shorthand expressions, enabling the syntax `f.dx` to
+  denote $\frac{\partial f}{\partial x}$ and `f.dx2` for
+  $\frac{\partial^2 f}{\partial x^2}$.
+
+* `TimeData` objects represent a time-dependent function
+  that includes leading dimension $t$, for example `g(t, x, y)`. In
+  addition to spatial derivatives `TimeData` symbols also provide
+  time derivatives `g.dt` and `g.dt2`, as well as options to save
+  the entire data along the time axis.
+
+To demonstrate Devito's symbolic capabilities, let us consider a
+time-dependent function $u(t, x, y)$ representing the forward
+wavefield. We can define this as a `TimeData` object in Devito as
 
 ```python
-	u = TimeData(name="u", shape=model.shape_domain, time_order=2, space_order=2, save=True, time_dim=nt)
+    u = TimeData(name="u", shape=model.shape_domain, time_order=2,
+                 space_order=2, save=True, time_dim=nt)
 ```
 
-To avoid unnecessary complications, we use second-order discretization in time. From the Taylor expansion of the continuous wavefield ``u`` in time, the second-order discrete approximation of the second-order time derivative as a function of the discrete wavefield ``\vd{u}`` is given by
+where the parameter `shape` defines the size of the allocated memory
+region, `time_order` and `space_order` define the default
+discretization order of the derivative expressions and the parameters
+`save=True` and `time_dim` force the entire wavefield to be stored in
+memory.
 
-```math {#timedis}
- \frac{d^2}{dt^2}u(x,y,i \Delta t) = \frac{\vd{u}[i+1] - 2 \vd{u}[i] + \vd{u}[i-1]}{\Delta t^2} + \mathcal{O}(\Delta t^2),\quad i=0\cdots n_t, 
-```
-
-where ``i`` is the time index running for ``n_t`` time steps sampled at a sample rate ``\Delta t`` choosing so that the time-stepping scheme remains stable. For simplicity, we drop the spatial dependance of the discrete wavefield vector ``\vd{u}``. The finite-difference approximation of the second derivative itself is given by 
-
-```math
-	\vd{\ddot{u}}[i] =  \frac{\vd{u}[i+1] - 2 \vd{u}[i] + \vd{u}[i-1]}{\Delta t^2}\approx  \frac{d^2}{dt^2}u(x,y,i \Delta t), \quad i=0\cdots n_t.
-``` 
-In Devito, we represent this time derivative symbolically as `u.dt2`.
-
-Apart from the temporal derivative, the acoustic wave equation also contains spatial derivatives. For the constant density acoustic wave equation, these spatial derivatives involve the action of the Laplacian ``\Delta \vd{u}[i]``,  which we define after discretization as the sum of second-order spatial derivatives along the Cartesian coordinate directions. Each second-order spatial derivative itself is discretized by a ``k^{th}`` order finite-difference approximation (`space_order=k` in the `TimeData` object instantiation) and also derive from the Taylor expansion. We represent the Laplacian in Devito by `u.laplace`. 
-
-With the space and time discretization defined, we can now automatically instantiate the `stencil` object, which we will later use to automatically generate executable C code. `Stencil` implements the action of a single timestep according to our discretization scheme, which is second order in time and  ``k^{th}`` order in space---i.e., mathematically we generate executable code that implements the following expression:
-
-```math {#WEdis}
-\vd{u}[i+1] = 2\vd{u}[i] - \vd{u}[i-1] + \Delta t^2\vd{m}^{-2} \odot \Big(\Delta \vd{u}[i]+ \vd{q}[i] \Big), \quad i=1\cdots n_t-1, 
-```
-
-where the symbol ``\odot`` stands for element-wise multiplication.
-
-To implement Equation #WEdis with Devito, we start by first defining the discretized wave equation in accordance to the continuous wave equation (Equation #WE) and then use the ```solve``` and ```Eq``` functions to reorder our discrete expression and define the update for the next time step ``\vd{u}[i+1]`` (`u.forward` in Devito):
+We can now use this wavefield to generate simple discretized stencil
+expressions for finite difference derivatives as:
 
 ```python
-	# Set up discretized wave equation
-	pde = model.m * u.dt2 - u.laplace + model.damp * u.dt
-	
-	# Generation of the stencil
-	stencil = Eq(u.forward, solve(pde, u.forward)[0])
+  In []: u
+  Out[]: u(t, x, y)
+
+  In []: u.dt
+  Out[]: -u(t, x, y)/s + u(t+s, x, y)/s
+
+  In []: u.dt2
+  Out[]: -2*u(t, x, y)/s**2 + u(t-s, x, y)/s**2 + u(t+s, x, y)/s**2
+```
+
+Using the automatic derivation of derivative expressions we can now
+implement a discretized expression for Equation #WE\ without the
+source term q(x,y,t;x_s, y_s)$, and using `DenseData` objects for
+$m(x, y)$ and `\eta(x, y)` provided by the `Model` utility simply as
+
+```python
+    # Set up discretized wave equation
+    pde = model.m * u.dt2 - u.laplace + model.damp * u.dt
+```
+
+The shorthand expression `u.laplace` hereby denotes the Laplacian
+$\Delta u$, where the order of the resulting derivative stencil is
+defined by the `space_order` parameter used to create the symbol
+`u(t, x, y, z)`.
+
+The resulting expression, however, needs to be rearranged
+to update the forward stencil point $u(t+s, x, y)$, represented by
+the shorthand expression `u.forward`. For this we can use the SymPy
+utility function `solve` to create a stencil expression that defines
+the update of the wavefield $u$ during a single timestep.
+
+```python
+    # Generation of the stencil
+    stencil = Eq(u.forward, solve(pde, u.forward)[0])
 ```
 
 ### Setting up the acquisition geometry
