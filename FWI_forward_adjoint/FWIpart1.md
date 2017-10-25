@@ -15,21 +15,8 @@ bibliography:
 
 Since its re-introduction by @Pratt Full-waveform inversion (FWI) has gained a lot of attention in geophysical exploration because of its ability to build velocity models more or less automatically in areas of complex geology. While there is an extensive and growing literature on this topic, the publications focus mostly on technical aspect making this topic inaccessible since it lacks simple introductory resources for geophysical newcomers. This is part one of two tutorials that attempt to provide an introduction and software to help people getting started. We hope to accomplish this by providing a hands-on walkthrough of FWI with Devito, which is a compiler for a domain-specific language (DSL) that automatically generates code for time-domain finite differences. In this capacity, Devito provides a concise and straightforward computational framework for discretizing wave equations. We will show that it generates verifiable executable code at run time for wave propagators associated with the forward and adjoint wave equation. Devito [@lange2016dtg] releases the user from recurrent and time-consuming coding of performant time-stepping codes and allows the user to concentrate on the geophysics of the problem rather than on low-level implementation details of wave-equation simulators. This tutorial covers the conventional adjoint-state formulation of full-waveform tomography [@Tomo] that underlies most of the current methods referred to as full-waveform inversion. While other formulations have been developed to improve the convergence properties of FWI, we will concentrate on the standard formulation that relies on the combination of a forward/adjoint pair of propagators and a correlation-based gradient.
 
-As part of this tutorial for FWI, we first introduce
-
- - propagators that simulate forward modeled synthetic data, which we compare with field recorded data, and
- - adjoint propagators that back-propagate the data residual, followed by gradient calculations via cross-correlations of the forward and back-propagated wavefields.
-
-To explain how FWI works, we describe a typical workflow on a simple 2D model that can be run on a laptop or desktop PC. Unfortunately, larger and more realistic models come at  computational cost and memory requirements that easily go beyond the hardware we envision people have available to reproduce the results presented in this tutorial. However, the workflow we describe is general enough that it easily translates to much larger velocity models in 2- and even 3D and to more complicated wave equations as long as their adjoints are known. For maximal access to our software framework, we divided the afore mentioned workflow into the following Python notebooks (see installation instructions at the end of this tutorial):
-
-- **`forward_modeling.ipynb`** --- in this notebook, we describe how to simulate synthetic data and how to save the corresponding wavefields and shot records for a given source and receiver geometry;
-
-- **`adjoint_modeling.ipynb`** --- here we demonstrate how to compute the data residual---i.e., the difference between the synthetic and observed data and how to back-propagate this residual wavefield with a propagator computed with the adjoint wave equation that acts on this residual;
- 
-- **`gradient.ipynb`** --- here we describe how we calculate the gradient by cross-correlation of the forward and adjoint wavefields over time. In this notebook, we also show how to repeat this for multiple sources.
- 
-For technically more sophisticated methods to minimize the FWI objective and ways to compute matrix-free actions of FWI's Jacobian and (Gauss-Newton) Hessian, we refer to Part 2 of this tutorial.
-
+As part of this tutorial for FWI, we first introduce propagators that simulate forward modeled synthetic data, which will be compared with field recorded data for inversion in the following tutorials. This tutorial is accompanied by a jupyter notebook:
+- **`forward_modeling.ipynb`** --- in this notebook, we describe how to simulate synthetic data and how to save the corresponding wavefields and shot records for a given source and receiver geometry
 
 ## Wave simulations for inversion
 
@@ -178,7 +165,7 @@ In Figure #Forward, we show the resulting shot record. A movie of snapshots of t
 
 ## Conclusions
 
-In this first part of the tutorial, we demonstrated how to set up discretized forward and adjoint wave equations, their associated propagators with at runtime code generation, and how to calculate a valid gradient of the FWI objective using the adjoint state method. In part two, we will demonstrate how to set up a complete matrix-free and scalable optimization framework for acoustic FWI.
+In this first part of the tutorial, we demonstrated how to set up discretized forward  wave equations, their associated propagators with at runtime code generation. In the follwoing part, we will show how to calculate a valid gradient of the FWI objective using the adjoint state method. In part two, we will demonstrate how to set up a complete matrix-free and scalable optimization framework for acoustic FWI.
 
 ### Installation
 
