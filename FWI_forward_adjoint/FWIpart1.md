@@ -165,7 +165,7 @@ In Figure #Forward, we show the resulting shot record. A movie of snapshots of t
 
 ## Conclusions
 
-In this first part of the tutorial, we demonstrated how to set up discretized forward  wave equations, their associated propagators with at runtime code generation. In the follwoing part, we will show how to calculate a valid gradient of the FWI objective using the adjoint state method. In part two, we will demonstrate how to set up a complete matrix-free and scalable optimization framework for acoustic FWI.
+In this first part of the tutorial, we demonstrated how to set up discretized forward  wave equations, their associated propagators with at runtime code generation. In the follwoing part, we will show how to calculate a valid gradient of the FWI objective using the adjoint state method. In part three, we will demonstrate how to set up a complete matrix-free and scalable optimization framework for acoustic FWI.
 
 ### Installation
 
