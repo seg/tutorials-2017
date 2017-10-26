@@ -13,28 +13,25 @@ bibliography:
 
 ## Introduction
 
-Since its re-introduction by @Pratt Full-waveform inversion (FWI) has gained a lot of attention in geophysical exploration because of its ability to build velocity models more or less automatically in areas of complex geology. While there is an extensive and growing literature on this topic, the publications focus mostly on technical aspect making this topic inaccessible since it lacks simple introductory resources for geophysical newcomers. This is part one of two tutorials that attempt to provide an introduction and software to help people getting started. We hope to accomplish this by providing a hands-on walkthrough of FWI with Devito, which is a compiler for a domain-specific language (DSL) that automatically generates code for time-domain finite differences. In this capacity, Devito provides a concise and straightforward computational framework for discretizing wave equations. We will show that it generates verifiable executable code at run time for wave propagators associated with the forward and adjoint wave equation. Devito [@lange2016dtg] releases the user from recurrent and time-consuming coding of performant time-stepping codes and allows the user to concentrate on the geophysics of the problem rather than on low-level implementation details of wave-equation simulators. This tutorial covers the conventional adjoint-state formulation of full-waveform tomography [@Tomo] that underlies most of the current methods referred to as full-waveform inversion. While other formulations have been developed to improve the convergence properties of FWI, we will concentrate on the standard formulation that relies on the combination of a forward/adjoint pair of propagators and a correlation-based gradient.
+Since its re-introduction by @Pratt, Full-waveform inversion (FWI) has gained a lot of attention in geophysical exploration because of its ability to build high resolution velocity models more or less automatically in areas of complex geology. While there is an extensive and growing literature on this topic, publications focus mostly on technical aspects, making this topic inaccessible for a broader audience due to the lack of simple introductory resources for geophysical newcomers. This is part one of two tutorials that attempt to provide an introduction and software to help people getting started. We hope to accomplish this by providing a hands-on walkthrough of FWI using Devito [@lange2016dtg], a compiler for a domain-specific language (DSL) that automatically generates code for time-domain finite differences. In this capacity, Devito provides a concise and straightforward computational framework for discretizing wave equations, which underlie all FWI frameworks. We will show that it generates verifiable executable code at run time for wave propagators associated with forward and adjoint wave equations. Devito releases the user from recurrent and time-consuming coding of performant time-stepping codes and allows to concentrate on the geophysics of the problem rather than on low-level implementation details of wave-equation simulators. This tutorial covers the conventional adjoint-state formulation of full-waveform tomography [@Tomo] that underlies most of the current methods referred to as full-waveform inversion. While other formulations have been developed to improve the convergence properties of FWI, we will concentrate on the standard formulation that relies on the combination of a forward/adjoint pair of propagators and a correlation-based gradient.
 
-As part of this tutorial for FWI, we first introduce propagators that simulate forward modeled synthetic data, which will be compared with field recorded data for inversion in the following tutorials. This tutorial is accompanied by a jupyter notebook:
-- **`forward_modeling.ipynb`** --- in this notebook, we describe how to simulate synthetic data and how to save the corresponding wavefields and shot records for a given source and receiver geometry
+Full-waveform inversion tries to iteratively minimize the difference between data that was acquired in a seismic survey and synthetic data that is generated from a wave simulator with an estimated model of the subsurface. As such, each FWI framework essentially consists of a wave simulator for forward modeling the predicted data and an adjoint simulator for calculating a model update from the data misfit. The first part of this tutorial is dedicated to the forward modeling part and demonstrates how to discretize and implement the acoustic wave equation using Devito. This tutorial is accompanied by a Jupyter notebook - **`forward_modeling.ipynb`** -, in which we describe how to simulate synthetic data for a specified source and receiver setup and how to save the corresponding wavefields and shot records. In part two of this series, we will address how to calculate model updates, i.e. gradients of the FWI objective function, via adjoint modeling and part three will demonstrate how to use the gradient as part of an optimization framework for inverting an unknown velocity model. 
 
 ## Wave simulations for inversion
 
-The acoustic wave equation for the squared slowness ``m``, defined as ``m(x,y)=c^{-2}(x,y)`` with ``c(x,y)`` being the unknown spatially varying wavespeed, and ``q(x,y,t;x_s)`` a source located at ``(x_s,y_s)``, is given by:
+The acoustic wave equation with the squared slowness ``m``, defined as ``m(x,y)=c^{-2}(x,y)`` with ``c(x,y)`` being the unknown spatially varying wavespeed, is given by:
 
 ```math {#WE}
- m \frac{d^2 u(x,y,t)}{dt^2} - \nabla^2 u(x,y,t) + \eta(x,y) \frac{d u(x,y,t)}{dt}=q(x,y,t;x_s, y_s).
+ m \frac{d^2 u(x,y,t)}{dt^2} - \nabla^2 u(x,y,t) + \eta(x,y) \frac{d u(x,y,t)}{dt}=q(x,y,t;x_s, y_s),
 ```
-
-Here, ``\eta(x,y)`` is a space-dependent dampening parameter for the absorbing boundary layer [@Cerjan]. As shown in Figure #model, the physical model is extended in every direction by `nbpml` grid points to mimic an infinite domain. The dampening term ``\eta \frac{d u(x,t)}{dt}`` attenuates the waves in the dampening layer [@Cerjan]. In Devito, the physical parameters ``m`` and ``\eta`` are contained in the `model` object that contains all relevant information such as the origin, grid spacing and size of the model---i.e., in `Python` we have
+where ``q(x,y,t;x_s)`` is the seismic source, located at ``(x_s,y_s)`` and ``\eta(x,y)`` is a space-dependent dampening parameter for the absorbing boundary layer [@Cerjan]. As shown in Figure #model, the physical model is extended in every direction by `nbpml` grid points to mimic an infinite domain. The dampening term ``\eta \frac{d u(x,t)}{dt}`` attenuates the waves in the dampening layer [@Cerjan] and prevents waves to reflect at the model boundaries. In Devito, the discrete representations of  ``m`` and ``\eta`` are contained in a `model` object that contains all relevant information such as the origin of the coordinate system, grid spacing and size of the model---i.e., in `Python` we have
 
 ```python
-	# Define a Devito model with physical size, velocity vp 
-	# and absorbing layer width in number of grid points (nbpml)
+	# Define a Devito object with the velocity model and grid information
 	model = Model(vp=vp, origin=origin, shape=shape, spacing=spacing, nbpml=40)
 ```
 
-In the `Model` instantiation, `vp` is the velocity in ``\text{km}/\text{s}``, origin is the origin of the physical model in meters, spacing is the discrete grid spacing in meters and shape is the number of grid points in each directions. Is is really important to not that `shape` is the size of the physical domain, the total size including the absorbing boundary layer will be automatically derived from `shape` and `nbpml`.
+In the `Model` instantiation, `vp` is the velocity in ``\text{km}/\text{s}``, `origin` is the origin of the physical model in meters, `spacing` is the discrete grid spacing in meters, `shape` is the number of grid points in each dimension and `nbpml` is the number of grid points in the absorbing boundary layer. Is is important to note that `shape` is the size of the physical domain only, while the total number of grid points, including the absorbing boundary layer, will be automatically derived from `shape` and `nbpml`.
 
 ####Figure: {#model}
 ![Model](Figures/setup.png){width=50%}
@@ -43,17 +40,24 @@ In the `Model` instantiation, `vp` is the velocity in ``\text{km}/\text{s}``, or
 
 ### Symbolic definition of the wave propagator
 
+To model seismic data by solving the acoustic wave equation, the first necessary
+step is to discretize our PDE, which includes discrete representations
+of the velocity model and wavefields, as well as approximations of the spatial and 
+temporal derivatives using finite differences (FD). However, instead of writing out 
+long finite difference stencils by hand, we are going to employ the powerful symbolic
+representations of Devito.
+
 The primary design objective of Devito is to allow users to define
 complex matrix-free finite difference operators from high-level
 symbolic definitions, while employing automated code generation to
 create highly optimized low-level C code. For this purpose Devito uses
-the symbolic algebra package SymPy @Meurer17 to facilitate the
+the symbolic algebra package SymPy [@Meurer17] to facilitate the
 automatic creation of derivative expressions, allowing the quick and
 efficient generation of high-order wave propagators with variable
 stencil orders.
 
 At the core of Devito's symbolic API are two symbolic types that
-behave like a `sympy.Function` objects, while also managing
+behave like SymPy function objects, while also managing
 user data:
 
 * `DenseData` objects represent a spatially varying function
@@ -72,8 +76,8 @@ user data:
   the entire data along the time axis.
 
 To demonstrate Devito's symbolic capabilities, let us consider a
-time-dependent function $\vd{u}(t, x, y)$ representing the forward
-wavefield. We can define this as a `TimeData` object in Devito as
+time-dependent function $\vd{u}(t, x, y)$ representing the discrete forward
+wavefield. We can define this as a `TimeData` object in Devito:
 
 ```python
     u = TimeData(name="u", shape=model.shape_domain, time_order=2,
@@ -102,44 +106,50 @@ expressions for finite difference derivatives as:
 
 Using the automatic derivation of derivative expressions we can now
 implement a discretized expression for Equation #WE\ without the
-source term $q(x,y,t;x_s, y_s)$, and using `DenseData` objects for
-$\vd{m}(x, y)$ and $\vd{\eta}(x, y)$ provided by the `Model` utility simply as
+source term $q(x,y,t;x_s, y_s)$. The `model` object which we created
+earlier, already contains the squared slowness $\vd{m}(x, y)$ and 
+damping term $\vd{\eta}(x, y)$ as `DenseData` objects:
 
 ```python
     # Set up discretized wave equation
     pde = model.m * u.dt2 - u.laplace + model.damp * u.dt
 ```
 
-The shorthand expression `u.laplace` hereby denotes the Laplacian
-$\Delta \vd{u}$, where the order of the resulting derivative stencil is
-defined by the `space_order` parameter used to create the symbol
-`u(t, x, y, z)`.
-
-The resulting expression, however, needs to be rearranged
-to update the forward stencil point $\vd{u}(t+s, x, y)$, represented by
-the shorthand expression `u.forward`. For this we can use the SymPy
-utility function `solve` to create a stencil expression that defines
-the update of the wavefield $\vd{u}$ during a single timestep.
-
-```python
-    # Generation of the stencil
-    stencil = Eq(u.forward, solve(pde, u.forward)[0])
-	print(latex(stencil))
-```
-
-that produces the sympy expression:
-
-```math
-u{\left (\text{time} + s,x,y \right )} = \frac{1}{6 h_{x}^{2} h_{y}^{2} \left(s \text{damp}{\left (x,y \right )} + 2 m{\left (x,y \right )}\right)} \left(6 h_{x}^{2} h_{y}^{2} s \text{damp}{\left (x,y \right )} u{\left (\text{time} - s,x,y \right )} + 24 h_{x}^{2} h_{y}^{2} m{\left (x,y \right )} u{\left (\text{time},x,y \right )} - 12 h_{x}^{2} h_{y}^{2} m{\left (x,y \right )} u{\left (\text{time} - s,x,y \right )} - 30 h_{x}^{2} s^{2} u{\left (\text{time},x,y \right )} - h_{x}^{2} s^{2} u{\left (\text{time},x,y - 2 h_{y} \right )} + 16 h_{x}^{2} s^{2} u{\left (\text{time},x,y - h_{y} \right )} + 16 h_{x}^{2} s^{2} u{\left (\text{time},x,y + h_{y} \right )} - h_{x}^{2} s^{2} u{\left (\text{time},x,y + 2 h_{y} \right )} - 30 h_{y}^{2} s^{2} u{\left (\text{time},x,y \right )} - h_{y}^{2} s^{2} u{\left (\text{time},x - 2 h_{x},y \right )} + 16 h_{y}^{2} s^{2} u{\left (\text{time},x - h_{x},y \right )} + 16 h_{y}^{2} s^{2} u{\left (\text{time},x + h_{x},y \right )} - h_{y}^{2} s^{2} u{\left (\text{time},x + 2 h_{x},y \right )}\right)
-```
-
-Mathematically, as we detail step by step in the notebook, it is equivalent to
+This expression translates to the following equation if we write out
+the (second order) second time derivative `u.dt2` as shown earlier and 
+for the moment ignore the damping term:
 
 ```math {#WEdis}
- \vd{u}[\text{time}+s] = 2\vd{u}[\text{time}] - \vd{u}[\text{time}-s] + \frac{s^2}{\vd{m}} \Big(\Delta \vd{u}[\text{time}]\Big), \quad \text{time}=1 \cdots  n_t-1_,
+ \frac{\vd{m}}{s^2} \Big( \vd{u}[\text{time}-s] - 2\vd{u}[\text{time}] + \vd{u}[\text{time}+s]\Big) - \Delta \vd{u}[\text{time}] = 0, \quad \text{time}=1 \cdots n_{t-1}
 ```
 
-ignoring the boundary (``\eta =  0`` inside the physical domain) for simplicity.
+with time being the current time step and $s$ being the time stepping interval.
+As we can see, the Laplacian $\Delta \vd{u}$ is simply expressed with Devito by
+the shorthand expression `u.laplace`, where the order of the derivative stencil is
+defined by the `space_order` parameter used to create the symbol `u(t, x, y, z)`. 
+However, for solving the wave equation, Equation (#WEdis) needs to be rearranged, 
+so that we obtain an expression for the wavefield $\vd{u}(\text{time}+s)$
+at the next time step (again, ignoring the damping term for now):
+
+```math {#WEstencil}
+ \vd{u}[\text{time}+s] = 2\vd{u}[\text{time}] - \vd{u}[\text{time}-s] + \frac{s^2}{\vd{m}} \Delta \vd{u}[\text{time}], \quad \text{time}=1 \cdots n_{t-1}
+```
+
+In Python, we can rearrange our ```pde``` expression automatically using 
+the SymPy utility function `solve`, to create a stencil expression that defines
+the update of the wavefield for the new time step $\vd{u}(\text{time}+s)$, which
+is expressed as `u.forward` in Devito:
+
+```python
+    # Rearrange PDE to obtain new wavefield at next time step
+    stencil = Eq(u.forward, solve(pde, u.forward)[0])
+```
+
+This `stencil` expression now represents the finite difference scheme from Equation #WEstencil,
+including the FD approximation of the Laplacian and the damping term. The `stencil` expression
+defines the update for a single time step only, but since the wavefield `u` is a `TimeData` object,
+Devito knows that we are solving a time-dependent problem over a number of time steps.
+
 
 ### Setting up the acquisition geometry
 
