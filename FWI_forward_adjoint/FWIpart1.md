@@ -31,11 +31,13 @@ Here, ``\eta(x,y)`` is a space-dependent dampening parameter for the absorbing b
 ```python
 	# Define a Devito model with physical size, velocity vp 
 	# and absorbing layer width in number of grid points (nbpml)
-	model = model = Model(vp=vp, origin=origin, shape=shape, spacing=spacing, nbpml=40)
+	model = Model(vp=vp, origin=origin, shape=shape, spacing=spacing, nbpml=40)
 ```
 
+In the `Model` instantiation, `vp` is the velocity in ``\text{km}/\text{s}``, origin is the origin of the physical model in meters, spacing is the discrete grid spacing in meters and shape is the number of grid points in each directions. Is is really important to not that `shape` is the size of the physical domain, the total size including the absorbing boundary layer will be automatically derived from `shape` and `nbpml`.
+
 ####Figure: {#model}
-![Model](Figures/setup.png){}
+![Model](Figures/setup.png){width=50%}
 : Representation of the computational domain and its extension, which contains the absorbing boundaries layer.
 
 
@@ -122,24 +124,54 @@ the update of the wavefield $\vd{u}$ during a single timestep.
 ```python
     # Generation of the stencil
     stencil = Eq(u.forward, solve(pde, u.forward)[0])
+	print(latex(stencil))
 ```
+
+that produces the sympy expression:
+
+```math
+u{\left (\text{time} + s,x,y \right )} = \frac{1}{6 h_{x}^{2} h_{y}^{2} \left(s \text{damp}{\left (x,y \right )} + 2 m{\left (x,y \right )}\right)} \left(6 h_{x}^{2} h_{y}^{2} s \text{damp}{\left (x,y \right )} u{\left (\text{time} - s,x,y \right )} + 24 h_{x}^{2} h_{y}^{2} m{\left (x,y \right )} u{\left (\text{time},x,y \right )} - 12 h_{x}^{2} h_{y}^{2} m{\left (x,y \right )} u{\left (\text{time} - s,x,y \right )} - 30 h_{x}^{2} s^{2} u{\left (\text{time},x,y \right )} - h_{x}^{2} s^{2} u{\left (\text{time},x,y - 2 h_{y} \right )} + 16 h_{x}^{2} s^{2} u{\left (\text{time},x,y - h_{y} \right )} + 16 h_{x}^{2} s^{2} u{\left (\text{time},x,y + h_{y} \right )} - h_{x}^{2} s^{2} u{\left (\text{time},x,y + 2 h_{y} \right )} - 30 h_{y}^{2} s^{2} u{\left (\text{time},x,y \right )} - h_{y}^{2} s^{2} u{\left (\text{time},x - 2 h_{x},y \right )} + 16 h_{y}^{2} s^{2} u{\left (\text{time},x - h_{x},y \right )} + 16 h_{y}^{2} s^{2} u{\left (\text{time},x + h_{x},y \right )} - h_{y}^{2} s^{2} u{\left (\text{time},x + 2 h_{x},y \right )}\right)
+```
+
+Mathematically, as we detail step by step in the notebook, it is equivalent to
+
+```math {#WEdis}
+ \vd{u}[\text{time}+s] = 2\vd{u}[\text{time}] - \vd{u}[\text{time}-s] + \frac{s^2}{\vd{m}} \Big(\Delta \vd{u}[\text{time}]\Big), \quad \text{time}=1 \cdots  n_t-1_,
+```
+
+ignoring the boundary (``\eta =  0`` inside the physical domain) for simplicity.
 
 ### Setting up the acquisition geometry
 
-In Devito, we model monopole sources/receivers with the object `PointData`, which includes methods that interpolate between the computational grid on which the wave equation is discretized and possibly off-the-grid source/receiver locations. The code that implements the definition of the receiver and sources, with locations collected in the arrays `rec_coords` and `src_coords`, reads in `Python` as 
+In Devito, we model monopole sources/receivers with the object `PointData`, which includes methods that interpolate between the computational grid on which the wave equation is discretized and possibly off-the-grid source/receiver locations.
+We showed previously the stencil obtained without a source. In presence of a source the stencil is
 
+```math {#WEdisa}
+ \vd{u}[\text{time}+s] = 2\vd{u}[\text{time}] - \vd{u}[\text{time}-s] + \frac{s^2}{\vd{m}} \Big(\Delta \vd{u}[\text{time}] + \vd{q}[\text{time}]\Big), \quad \text{time}=1 \cdots  n_t-1_.
 ```
-	# create receiver array from receiver coordinates
-	rec = Receiver(name='rec', npoint=101, ntime=nt, ndim=2, coordinates=rec_coords)
-	rec_term = rec.interpolate(u, offset=model.nbpml)
-	
+
+
+and we see that at time step `i` we need to add the source term corresponding to this time-step into the updated wavefield `u[i+1]` (`u.forward` in Devito) with the discretization weight  ``\frac{\Delta t^2}{\vd{m}}`` as the source is inside the physical domain (``\eta = 0``).
+
+The code that implements the definition of the receiver and sources, with locations collected in the arrays `rec_coords` and `src_coords`, reads in `Python` as 
+
+```	
 	# define source injection array for given a source wavelet, coordinates and frequency
 	src = RickerSource(name='src', ndim=2, f0=f0, time=time, coordinates=src_coords)
 	src_term = src.inject(field=u.forward, expr=src * dt**2 / model.m, offset=model.nbpml)
 ```
 
-The argument `expr=src*dt**2 / model.m` in the instantiation of `src.inject` follows directly from Equation #WEdis\. The parameter `offset` is the size of the absorbing layer as shown in Figure #model (source position shifted by `offset`).
+The parameter `offset` is the size of the absorbing layer as shown in Figure #model (source position shifted by `offset`).
 
+On the other side, the receiver is only a read of the wavefield at a specific position at time `i` and does not require any weight.
+
+```python
+	# create receiver array from receiver coordinates
+	rec = Receiver(name='rec', npoint=101, ntime=nt, ndim=2, coordinates=rec_coords)
+	rec_term = rec.interpolate(u, offset=model.nbpml)
+```
+
+and the `offset` parameter also correct for the origin shift from the model extension.
 
 ### Forward simulation 
 
@@ -150,9 +182,19 @@ With the source/receiver geometry set and the wave-equation stencil generated, w
 	op_fwd = Operator([stencil] + src_term + rec_term,
 	              subs={t.spacing: dt, x.spacing: spacing[0],
 	                    y.spacing: spacing[1]})
-	
+```
+
+The Devito operator creation is minimalist thanks to the symbolic representation of the stencil. All information such as dimension sizes (to generate loops), are contained in the stencil and more specifically in its arguments `u, m, dam, src, rec` that still carry the metadata provided at object instantiation (`TimeData, DenseData, ...` creation). The only extra argument is `subs` that provides substitution method for the constants. At generation time, all instances of `x.spacing=h_x` will be replaced by its actual value. Once the operator created, we can access the generated C code with `op_fw.ccode`.
+
+####Figure:{#Cgen}
+![Generated C code](Figures/ccode-crop.png)
+
+We can finally execute the forward modeling propagator with the simple command:
+
+```python	
 	# Generate wavefield snapshots and a shot record
 	op_fwd.apply()
+	# Access the wavefield and shot record at the end of the propagation.
 	wavefield = u.data
 	shotrecord = rec.data
 ```
@@ -163,6 +205,12 @@ In Figure #Forward, we show the resulting shot record. A movie of snapshots of t
 ![Two layer shot record](Figures/shotrecord.pdf){width=45%}
 ![Marmousi shot record](Figures/shotrecord_marmou.pdf){width=45%}
 : Shot record on a two layer and marmousimodel for a single source and split-spread receiver geometry from **`modeling.ipynb`**.
+
+####Figure: {#Snaps}
+![T=..33s](Figures/snap1.pdf){width=30%}
+![T=.5s](Figures/snap2.pdf){width=30%}
+![T=..67](Figures/snap3.pdf){width=30%}
+: Snapshots of the wavefield in a two layer model for a source in the middle of the x axis **`modeling.ipynb`**.
 
 ## Conclusions
 
