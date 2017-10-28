@@ -4,8 +4,11 @@
 # Full-Waveform Inversion - Part 1: forward modeling
 
 Mathias Louboutin<sup>1</sup>\*, Philipp Witte<sup>1</sup>, Michael Lange<sup>2</sup>, Navjot Kurjeka<sup>2</sup>, Fabio Luporini<sup>2</sup>, Gerard Gorman<sup>2</sup>, and Felix J. Herrmann<sup>1,3</sup>
+
 <sup>1</sup> Seismic Laboratory for Imaging and Modeling (SLIM), The University of British Columbia 
+
 <sup>2</sup> Imperial College London, London, UK
+
 <sup>3</sup> now at Georgia Institute of Technology, USA 
 
 Corresponding author: mloubout@eoas.ubc.ca
