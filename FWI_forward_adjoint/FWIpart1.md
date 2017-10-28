@@ -74,7 +74,7 @@ We can now use this wavefield to generate simple discretized stencil expressions
   Out[]: -2*u(t, x, y)/s**2 + u(t-s, x, y)/s**2 + u(t+s, x, y)/s**2
 ```
 
-Using the automatic derivation of derivative expressions we can now implement a discretized expression for Equation #WE\ without the source term $q(x,y,t;x_s, y_s)$. The `model` object which we created earlier, already contains the squared slowness $\vd{m}(x, y)$ and damping term $\vd{\eta}(x, y)$ as `DenseData` objects:
+Using the automatic derivation of derivative expressions we can now implement a discretized expression for Equation #WE\ without the source term $q(x,y,t;x_s, y_s)$. The `model` object which we created earlier, already contains the squared slowness $\vd{m}$ and damping term $\vd{\eta}$ as `DenseData` objects:
 
 ```python
     # Set up discretized wave equation
@@ -87,13 +87,13 @@ If we write out the (second order) second time derivative `u.dt2` as shown above
  \frac{\vd{m}}{s^2} \Big( \vd{u}[\text{time}-s] - 2\vd{u}[\text{time}] + \vd{u}[\text{time}+s]\Big) - \Delta \vd{u}[\text{time}] = 0, \quad \text{time}=1 \cdots n_{t-1}
 ```
 
-with time being the current time step and $s$ being the time stepping interval. As we can see, the Laplacian $\Delta \vd{u}$ is simply expressed with Devito by the shorthand expression `u.laplace`, where the order of the derivative stencil is defined by the `space_order` parameter used to create the symbol `u(t, x, y, z)`.  However, for solving the wave equation, Equation #WEdis needs to be rearranged so that we obtain an expression for the wavefield $\vd{u}(\text{time}+s)$ at the next time step. Ignoring the damping term once again, this yields:
+with time being the current time step and $s$ being the time stepping interval. As we can see, the Laplacian $\Delta \vd{u}$ is simply expressed with Devito by the shorthand expression `u.laplace`, where the order of the derivative stencil is defined by the `space_order` parameter used to create the symbol `u(t, x, y)`.  However, for solving the wave equation, Equation #WEdis needs to be rearranged so that we obtain an expression for the wavefield $\vd{u}(\text{time}+s)$ at the next time step. Ignoring the damping term once again, this yields:
 
 ```math {#WEstencil}
  \vd{u}[\text{time}+s] = 2\vd{u}[\text{time}] - \vd{u}[\text{time}-s] + \frac{s^2}{\vd{m}} \Delta \vd{u}[\text{time}]
 ```
 
-In Python, we can rearrange our ```pde``` expression automatically using the SymPy utility function `solve`, to create a stencil expression that defines the update of the wavefield for the new time step $\vd{u}(\text{time}+s)$, which is expressed as `u.forward` in Devito:
+In Python, we can rearrange our `pde` expression automatically using the SymPy utility function `solve`, to create a stencil expression that defines the update of the wavefield for the new time step $\vd{u}(\text{time}+s)$, which is expressed as `u.forward` in Devito:
 
 ```python
     # Rearrange PDE to obtain new wavefield at next time step
@@ -123,7 +123,7 @@ Devito provides a special function for setting up a Ricker wavelet called `Ricke
 	src_term = src.inject(field=u.forward, expr=src * dt**2 / model.m, offset=model.nbpml)
 ```
 
-The `src.inject` now $injects$ the current time sample of the Ricker wavelet (weighted with ``\frac{s^2}{\vd{m}}``) into the updated wavefield `u.forward` at the specified coordinates. The parameter `offset` is the size of the absorbing layer as shown in Figure #model (i.e. the source position is shifted by `offset`).
+The `src.inject` now injects the current time sample of the Ricker wavelet (weighted with ``\frac{s^2}{\vd{m}}`` as shown in equation #WEdisa) into the updated wavefield `u.forward` at the specified coordinates. The parameter `offset` is the size of the absorbing layer as shown in Figure #model (i.e. the source position is shifted by `offset`).
 
 There is an according wrapper function for receivers as well, which creates a `PointData` object for a given number `npoint` of receivers, number `nt` of time samples  and specified receiver coordinates `rec_coords` (with `ndim=2`, since we have a two-dimensional example). 
 
@@ -146,7 +146,7 @@ Having defined `PointData` objects for sources and receivers, we can now define 
 	                    y.spacing: spacing[1]})
 ```
 
-Up to this point, our full expression `[stencil] + src_term + rec_term` only contains placeholders for the modeling parameters, such as number of grid points and sampling intervals. Only now, when we want to generate the actual code, those placeholders need to be filled in with concrete values. The `subs` keyword argument takes those modeling parameters as an input and, at code generation time, substitues the placeholders with the parameters. Once the modeling operator is created, we can access the generated C code with `op_fw.ccode`. There is no need to explicitly define time loops in Python, since Devito infers the modeling time from the `TimeData` objects directly and automatically generates those time loops in the C code.
+Up to this point, our full expression `[stencil] + src_term + rec_term` only contains placeholders for the modeling parameters, such as number of grid points and sampling intervals. Only now, when we want to generate the actual code, those placeholders need to be filled in with concrete values. The `subs` keyword argument takes those modeling parameters as an input and, at code generation time, substitutes the placeholders with the parameters. Once the modeling operator is created, we can access the generated C code with `op_fw.ccode`. There is no need to explicitly define time loops in Python, since Devito infers the modeling time from the `TimeData` objects directly and automatically generates those time loops in the C code.
 
 ####Figure:{#Cgen}
 ![Generated C code](Figures/ccode-crop.png)
