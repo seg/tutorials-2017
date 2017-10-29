@@ -3,7 +3,7 @@
 
 # Full-Waveform Inversion - Part 1: forward modeling
 
-Mathias Louboutin<sup>1</sup>\*, Philipp Witte<sup>1</sup>, Michael Lange<sup>2</sup>, Navjot Kurjeka<sup>2</sup>, Fabio Luporini<sup>2</sup>, Gerard Gorman<sup>2</sup>, and Felix J. Herrmann<sup>1,3</sup>
+Mathias Louboutin<sup>1</sup>\*, Philipp Witte<sup>1</sup>, Michael Lange<sup>2</sup>, Navjot Kukreja<sup>2</sup>, Fabio Luporini<sup>2</sup>, Gerard Gorman<sup>2</sup>, and Felix J. Herrmann<sup>1,3</sup>
 
 <sup>1</sup> Seismic Laboratory for Imaging and Modeling (SLIM), The University of British Columbia 
 
@@ -15,11 +15,11 @@ Corresponding author: mloubout@eoas.ubc.ca
 
 ## Introduction
 
-Since its re-introduction by Pratt (1999), Full-waveform inversion (FWI) has gained a lot of attention in geophysical exploration because of its ability to build high resolution velocity models more or less automatically in areas of complex geology. While there is an extensive and growing literature on this topic, publications focus mostly on technical aspects, making this topic inaccessible for a broader audience due to the lack of simple introductory resources for geophysical newcomers. This is part one of two tutorials that attempt to provide an introduction and software to help people getting started. We hope to accomplish this by providing a hands-on walkthrough of FWI using Devito [2], a system based on domain specific languages that automatically generates code for time-domain finite-differences. In this capacity, Devito provides a concise and straightforward computational framework for discretizing wave equations, which underlie all FWI frameworks. We will show that it generates verifiable executable code at run time for wave propagators associated with forward and adjoint wave equations. Devito releases the user from recurrent and time-consuming coding of performant time-stepping codes and allows to concentrate on the geophysics of the problem rather than on low-level implementation details of wave-equation simulators. This tutorial covers the conventional adjoint-state formulation of full-waveform tomography [5] that underlies most of the current methods referred to as full-waveform inversion. While other formulations have been developed to improve the convergence properties of FWI, we will concentrate on the standard formulation that relies on the combination of a forward/adjoint pair of propagators and a correlation-based gradient.
+Since its re-introduction by Pratt (1999), Full-waveform inversion (FWI) has gained a lot of attention in geophysical exploration because of its ability to build high resolution velocity models more or less automatically in areas of complex geology. While there is an extensive and growing literature on this topic, publications focus mostly on technical aspects, making this topic inaccessible for a broader audience due to the lack of simple introductory resources for newcomers to geophysics. This is part one of three tutorials that together attempt to provide an introduction to the technique and software to help people get started. We hope to accomplish this by providing a hands-on walkthrough of FWI using Devito [2], a system based on domain-specific languages that automatically generates code for time-domain finite-differences. In this capacity, Devito provides a concise and straightforward computational framework for discretizing wave equations, which underlie all FWI frameworks. We will show that it generates verifiable executable code at run time for wave propagators associated with forward and adjoint wave equations. Devito frees the user from the recurrent and time-consuming coding of performant time-stepping codes and allows to concentrate on the geophysics of the problem rather than on low-level implementation details of wave-equation simulators. This tutorial covers the conventional adjoint-state formulation of full-waveform tomography [5] that underlies most of the current methods referred to as full-waveform inversion. While other formulations have been developed to improve the convergence properties of FWI, we will concentrate on the standard formulation that relies on the combination of a forward/adjoint pair of propagators and a correlation-based gradient.
 
-Full-waveform inversion tries to iteratively minimize the difference between data that was acquired in a seismic survey and synthetic data that is generated from a wave simulator with an estimated model of the subsurface. As such, each FWI framework essentially consists of a wave simulator for forward modeling the predicted data and an adjoint simulator for calculating a model update from the data misfit. The first part of this tutorial is dedicated to the forward modeling part and demonstrates how to discretize and implement the acoustic wave equation using Devito. This tutorial is accompanied by a Jupyter notebook - **`forward_modeling.ipynb`** -, in which we describe how to simulate synthetic data for a specified source and receiver setup and how to save the corresponding wavefields and shot records. In part two of this series, we will address how to calculate model updates, i.e. gradients of the FWI objective function, via adjoint modeling and part three will demonstrate how to use the gradient as part of an optimization framework for inverting an unknown velocity model. 
+Full-waveform inversion tries to iteratively minimize the difference between data that was acquired in a seismic survey and synthetic data that is generated from a wave simulator with an estimated model of the subsurface. As such, each FWI framework essentially consists of a wave simulator for forward modeling the predicted data and an adjoint simulator for calculating a model update from the data misfit. The first part of this tutorial is dedicated to the forward modeling part and demonstrates how to discretize and implement the acoustic wave equation using Devito. This tutorial is accompanied by a Jupyter notebook - **`forward_modeling.ipynb`**, in which we describe how to simulate synthetic data for a specified source and receiver setup and how to save the corresponding wavefields and shot records. In part two of this series, we will address how to calculate model updates, i.e. gradients of the FWI objective function, via adjoint modeling and part three will demonstrate how to use the gradient as part of an optimization framework for inverting an unknown velocity model. 
 
-Installation instructions for Devito are detailed at the end of the paper and required to execute the notebook.
+Devito is required to execute the notebook and can be installed following the instructions at the end of the paper.
 
 ## Wave simulations for inversion
 
@@ -31,7 +31,7 @@ $$
 \end{align}
 $${#WE}
 
-where $q(x,y,t;x_s)$ is the seismic source, located at $(x_s,y_s)$ and $\eta(x,y)$ is a space-dependent dampening parameter for the absorbing boundary layer [1]. As shown in Figure #model, the physical model is extended in every direction by `nbpml` grid points to mimic an infinite domain. The dampening term $\eta \frac{d u(x,t)}{dt}$ attenuates the waves in the dampening layer [1] and prevents waves to reflect at the model boundaries. In Devito, the discrete representations of  $m$ and $\eta$ are contained in a `model` object that contains a `grid` object with all relevant information such as the origin of the coordinate system, grid spacing, size of the model and dimensions `x, y, time`---i.e., in `Python` we have
+where $q(x,y,t;x_s)$ is the seismic source, located at $(x_s,y_s)$ and $\eta(x,y)$ is a space-dependent dampening parameter for the absorbing boundary layer [1]. As shown in Figure #model, the physical model is extended in every direction by `nbpml` grid points to mimic an infinite domain. The dampening term $\eta \frac{d u(x,t)}{dt}$ attenuates the waves in the dampening layer [1] and prevents waves from reflecting at the model boundaries. In Devito, the discrete representations of  $m$ and $\eta$ are contained in a `model` object that contains a `grid` object with all relevant information such as the origin of the coordinate system, grid spacing, size of the model and dimensions `x, y, time`---i.e., in `Python` we have
 
 ```python
 	# Define a Devito object with the velocity model and grid information
@@ -56,22 +56,20 @@ At the core of Devito's symbolic API are two symbolic types that behave like Sym
 
 * `Function` objects represent a spatially varying function
   discretized on a regular cartesian grid. For example, a function
-  symbol `f = Function(name='f', grid=model.grid space_order=2)`
-  is denoted symbolically as `f(x, y)`. Auto-generated symbolic
-  expressions for finite-difference derivatives are provided by these
-  objects via shorthand expressions, where the `space_order` parameter
+  symbol `f = Function(name='f', grid=model.grid, space_order=2)`
+  is denoted symbolically as `f(x, y)`. The objects provide auto-generated symbolic expressions for finite-difference derivatives through shorthand expressions like `f.dx` and `f.dx2` for the first and second derivative in `x`, where the `space_order` parameter
   defines the order of the created finite-difference stencil.
 
-* `TimeFunction` objects represent a time-dependent function
-  that includes leading dimension $\text{time}$, for example `g(time, x, y)`. In
+* `TimeFunction` objects represent a time-dependent function that has $\text{time}$ as the leading dimension, for example `g(time, x, y)`. In
   addition to spatial derivatives `TimeFunction` symbols also provide
   time derivatives `g.dt` and `g.dt2`, as well as options to store
   the entire data along the time axis.
 
-To demonstrate Devito's symbolic capabilities, let us consider a time-dependent function $\mathbf{u}(\text{time}, x, y)$ representing the discrete forward wavefield. We can define this as a `TimeData` object in Devito:
+To demonstrate Devito's symbolic capabilities, let us consider a time-dependent function $\mathbf{u}(\text{time}, x, y)$ representing the discrete forward wavefield. We can define this as a `TimeFunction` object in Devito:
 
-```python
-    u = TimeData(name="u", shape=model.shape_domain, time_order=2,
+```
+python
+    u = TimeFunction(name="u", shape=model.shape_domain, time_order=2,
                  space_order=2, save=True, time_dim=nt)
 ```
 
@@ -85,7 +83,8 @@ derivatives using shorthand expressions, such as `u.dx` and `u.dx2` to
 denote $\frac{\partial u}{\partial x}$ and $\frac{\partial^2
 u}{\partial x^2}$ respectively.
 
-```python
+```
+python
   In []: u
   Out[]: u(time, x, y)
 
@@ -98,9 +97,10 @@ u}{\partial x^2}$ respectively.
 
 Using the automatic derivation of derivative expressions we can now implement a discretized expression for Equation @WE without the source term $q(x,y,t;x_s, y_s)$. The `model` object which we created earlier, already contains the squared slowness $\mathbf{m}$ and damping term $\mathbf{\eta}$ as `Function` objects:
 
-```python
-    # Set up discretized wave equation
-    pde = model.m * u.dt2 - u.laplace + model.damp * u.dt
+```
+python
+# Set up discretized wave equation
+pde = model.m * u.dt2 - u.laplace + model.damp * u.dt
 ```
 
 If we write out the (second order) second time derivative `u.dt2` as shown earlier and ignore the damping term for the moment, our `pde` expression translates to the following discrete the wave equation:
@@ -117,12 +117,13 @@ $${#WEstencil}
 
 In Python, we can rearrange our `pde` expression automatically using the SymPy utility function `solve`, to create a stencil expression that defines the update of the wavefield for the new time step $\mathbf{u}(\text{time}+s)$, which is expressed as `u.forward` in Devito:
 
-```python
+```
+python
     # Rearrange PDE to obtain new wavefield at next time step
     stencil = Eq(u.forward, solve(pde, u.forward)[0])
 ```
 
-This `stencil` expression now represents the finite-difference approximation from Equation @WEstencil, including the finite-difference approximation of the Laplacian and the damping term. The `stencil` expression defines the update for a single time step only, but since the wavefield `u` is a `TimeData` object, Devito knows that we are solving a time-dependent problem over a number of time steps.
+This `stencil` expression now represents the finite-difference approximation from Equation @WEstencil, including the finite-difference approximation of the Laplacian and the damping term. The `stencil` expression defines the update for a single time step only, but since the wavefield `u` is a `TimeFunction` object, Devito knows that we are solving a time-dependent problem over a number of time steps.
 
 
 ### Setting up the acquisition geometry
@@ -147,9 +148,10 @@ Devito provides a special function for setting up a Ricker wavelet called `Ricke
 
 The `src.inject` now injects the current time sample of the Ricker wavelet (weighted with $\frac{s^2}{\mathbf{m}}$ as shown in equation @WEdisa) into the updated wavefield `u.forward` at the specified coordinates. The parameter `offset` is the size of the absorbing layer as shown in Figure #model (i.e. the source position is shifted by `offset`).
 
-There is an according wrapper function for receivers as well, which creates a `SparseFunction` object for a given number `npoint` of receivers, number `nt` of time samples  and specified receiver coordinates `rec_coords` (with `ndim=2`, since we have a two-dimensional example). 
+There is a corresponding wrapper function for receivers as well, which creates a `SparseFunction` object for a given number `npoint` of receivers, number `nt` of time samples  and specified receiver coordinates `rec_coords` (with `ndim=2`, since we have a two-dimensional example). 
 
-```python
+```
+python
 	# create receiver array from receiver coordinates
 	rec = Receiver(name='rec', npoint=101, ntime=nt, ndim=2, coordinates=rec_coords)
 	rec_term = rec.interpolate(u, offset=model.nbpml)
@@ -182,7 +184,8 @@ simple Python function call by supplying the number of timesteps
 to extract the final wavefield and shotrecord directly from the
 symbolic function objects.
 
-```python	
+```
+python	
   # Generate wavefield snapshots and a shot record
   op_fwd(time=n_timesteps, dt=model.critical_dt)
 
@@ -208,11 +211,11 @@ In Figure 3, we show the resulting shot record. A movie of snapshots of the forw
 
 ## Conclusions
 
-In this first part of the tutorial, we have demonstrated how to set up discretized forward wave equations, their associated propagators with at runtime code generation. In the following part, we will show how to calculate a valid gradient of the FWI objective using the adjoint state method. In part three, we will demonstrate how to set up a complete matrix-free and scalable optimization framework for acoustic FWI.
+In this first part of the tutorial, we have demonstrated how to set up discretized forward wave equations and their associated propagators with runtime code generation. In the following part, we will show how to calculate a valid gradient of the FWI objective using the adjoint state method. In part three, we will demonstrate how to set up a complete matrix-free and scalable optimization framework for acoustic FWI.
 
 ### Installation
 
-This tutorial and the coming second part are based on Devito version 3.0.3. It also require to install the full software with examples, not only the code generation API. To install devito
+This tutorial and the coming second part are based on Devito version 3.0.3. It requires the installation of the full software with examples, not only the code generation API. To install devito
 
 ```
 	git clone -b v3.1.0 https://github.com/opesci/devito
@@ -222,7 +225,7 @@ This tutorial and the coming second part are based on Devito version 3.0.3. It a
 	pip install -e .
 ```
  
-### Usefull links
+### Useful links
 
 - [Devito documentation](http://www.opesci.org/)
 - [Devito source code and examples](https://github.com/opesci/Devito)
