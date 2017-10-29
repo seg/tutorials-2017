@@ -49,7 +49,7 @@ In the `Model` instantiation, `vp` is the velocity in $\text{km}/\text{s}$, `ori
 
 To model seismic data by solving the acoustic wave equation, the first necessary step is to discretize this PDE, which includes discrete representations of the velocity model and wavefields, as well as approximations of the spatial and temporal derivatives using finite-differences (FD). Unfortunately, implementing these finite-difference stencils in low-level code by hand is error prone, especially when performant and reliable code is desired. This is the mean reason why we employ the powerful symbolic representations of Devito in this tutorial.
 
-The primary design objective of Devito is to allow users to define complex matrix-free finite-difference stencils and propagators from high-level symbolic definitions, while employing automated code generation to create highly optimized low-level C code. For this purpose Devito uses the symbolic algebra package SymPy [4] to facilitate the automatic creation of derivative expressions. These automatic symbolic manupulations allow for quick at run time generation of computationally efficient wave propagators with variable stencil orders (including long and complex high order stencils). We guarantee execution speed by using automated performance optimization with state-of-the-art compiler techniques that ensure computational efficiency both in speed and memory usage.
+The primary design objective of Devito is to allow users to define complex matrix-free finite-difference stencils and propagators from high-level symbolic definitions, while employing automated code generation to create highly optimized low-level C code. For this purpose Devito uses the symbolic algebra package SymPy [4] to facilitate the automatic creation of derivative expressions. These automatic symbolic manipulations allow for quick at run time generation of computationally efficient wave propagators with variable stencil orders (including long and complex high order stencils). We guarantee execution speed by using automated performance optimization with state-of-the-art compiler techniques that ensure computational efficiency both in speed and memory usage.
 
 At the core of Devito's symbolic API are two symbolic types that behave like SymPy function objects, while also managing user data:
 
@@ -67,8 +67,8 @@ At the core of Devito's symbolic API are two symbolic types that behave like Sym
 To demonstrate Devito's symbolic capabilities, let us consider a time-dependent function $\mathbf{u}(\text{time}, x, y)$ representing the discrete forward wavefield. We can define this as a `TimeFunction` object in Devito:
 
 ```python
-    u = TimeFunction(name="u", shape=model.shape_domain, time_order=2,
-                 space_order=2, save=True, time_dim=nt)
+    u = TimeFunction(name="u", gitd=model.grid, time_order=2,
+                     space_order=2, save=True, time_dim=nt)
 ```
 
 where the `grid` object provided by the `model` defines the size
@@ -125,7 +125,7 @@ This `stencil` expression now represents the finite-difference approximation der
 
 ### Setting up the acquisition geometry
 
-The expression for time stepping we derived in the previous section does not contain a seismic source function yet, so the update for the wavefield at a new time step is solely defined by the two previous wavefields. However as indicated in Equation @WE, wavefields for seismic experiments are often excited by an active (impulsive) source $q(x,y,t;x_s)$, which is a function of space and time (just like the wavefield `u`). To include such a source term in our modeling scheme, we simply add the the source wavefield as an additional term to our stencil expression (Equation #WEstencil):
+The expression for time stepping we derived in the previous section does not contain a seismic source function yet, so the update for the wavefield at a new time step is solely defined by the two previous wavefields. However as indicated in Equation @WE, wavefields for seismic experiments are often excited by an active (impulsive) source $q(x,y,t;x_s)$, which is a function of space and time (just like the wavefield `u`). To include such a source term in our modeling scheme, we simply add the the source wavefield as an additional term to our stencil expression (Equation @WEstencil):
 
 $$
  \mathbf{u}[\text{time}+s] = 2\mathbf{u}[\text{time}] - \mathbf{u}[\text{time}-s] + \frac{s^2}{\mathbf{m}} \Big(\Delta \mathbf{u}[\text{time}] + \mathbf{q}[\text{time}]\Big).
@@ -133,13 +133,13 @@ $$ {#WEdisa}
 
 Since the source appears on the right-hand side in the original equation (Equation @WE), the term also needs to be multiplied with $\frac{s^2}{\mathbf{m}}$ (this follows from rearranging expression @WEdis, with the source on the right-hand side). Unlike the discrete wavefield `u` however, the source `q` is typically localized in space and only a function of time, which means the time-dependent source wavelet is injected into the propagating wavefield at a specified source location. The same applies when we sample the wavefield at  receiver locations to simulate a shot record, i.e. the simulated wavefield needs to be sampled at specified receiver locations only. Source and receiver both do not necessarily coincide with the modeling grid.
 
-Since sources and receivers are interpersed sparsely and often located off the computational grid, Devito provides a separate symbolic type specifically designed for sparse objects called `SparseFunction` and that handles interpolations onto the model grid. Just like we defined wavefields as `TimeFunction` objects and model and damping terms as `Function` objects, we can construct `SparseFunction` objects for sources and receiver and add them to our `stencil` expression.
+Since sources and receivers are interspersed sparsely and often located off the computational grid, Devito provides a separate symbolic type specifically designed for sparse objects called `SparseFunction` and that handles interpolations onto the model grid. Just like we defined wavefields as `TimeFunction` objects and model and damping terms as `Function` objects, we can construct `SparseFunction` objects for sources and receiver and add them to our `stencil` expression.
 
 Devito also provides a special function for setting up a Ricker wavelet called `RickerSource`, which acts as a wrapper around `SparseFunction` objects and automatically creates an instance of a `SparseFunction` object for a Ricker wavelet with a specified peak frequency `f0` and origin time `t_0` [Is this correct????] and source coordinates `src_coords`:
 
 ```	
 	# define source object with Ricker wavelet and inject
-	src = RickerSource(name='src', ndim=2, f0=f0, time=time, coordinates=src_coords)
+	src = RickerSource(name='src', grid=model.grid, f0=f0, time=time, 	   coordinates=src_coords)
 	src_term = src.inject(field=u.forward, expr=src * dt**2 / model.m, offset=model.nbpml)
 ```
 
@@ -149,7 +149,7 @@ To extract the wavefield at a predetermined set of receiver locations, there is 
 
 ```python
 	# create receiver array from receiver coordinates
-	rec = Receiver(name='rec', npoint=101, ntime=nt, ndim=2, coordinates=rec_coords)
+	rec = Receiver(name='rec', npoint=101, ntime=nt, grid=model.grid, coordinates=rec_coords)
 	rec_term = rec.interpolate(u, offset=model.nbpml)
 ```
 
@@ -206,7 +206,7 @@ In Figure 3, we show the resulting shot record. A movie of snapshots of the forw
 
 ## Conclusions
 
-In this first part of the tutorial, we have demonstrated how to set up the discretized forward acoustic wave equations and its associated wave propagator with runtime code generation. While we limited our discussion to the constant density acoustice wave equation, Devito is capable of handling more general wave equations but this is a topic beyond this tutorial on simulating waves for inversion. In part two of our tutorial, we will show how to calculate a valid gradient of the FWI objective using the adjoint state method. In part three, we will demonstrate how to set up a complete matrix-free and scalable optimization framework for acoustic FWI.
+In this first part of the tutorial, we have demonstrated how to set up the discretized forward acoustic wave equations and its associated wave propagator with runtime code generation. While we limited our discussion to the constant density acoustic wave equation, Devito is capable of handling more general wave equations but this is a topic beyond this tutorial on simulating waves for inversion. In part two of our tutorial, we will show how to calculate a valid gradient of the FWI objective using the adjoint state method. In part three, we will demonstrate how to set up a complete matrix-free and scalable optimization framework for acoustic FWI.
 
 ### Installation
 
