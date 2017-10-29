@@ -67,8 +67,7 @@ At the core of Devito's symbolic API are two symbolic types that behave like Sym
 
 To demonstrate Devito's symbolic capabilities, let us consider a time-dependent function $\mathbf{u}(\text{time}, x, y)$ representing the discrete forward wavefield. We can define this as a `TimeFunction` object in Devito:
 
-```
-python
+```python
     u = TimeFunction(name="u", shape=model.shape_domain, time_order=2,
                  space_order=2, save=True, time_dim=nt)
 ```
@@ -83,8 +82,7 @@ derivatives using shorthand expressions, such as `u.dx` and `u.dx2` to
 denote $\frac{\partial u}{\partial x}$ and $\frac{\partial^2
 u}{\partial x^2}$ respectively.
 
-```
-python
+```python
   In []: u
   Out[]: u(time, x, y)
 
@@ -97,8 +95,7 @@ python
 
 Using the automatic derivation of derivative expressions we can now implement a discretized expression for Equation @WE without the source term $q(x,y,t;x_s, y_s)$. The `model` object which we created earlier, already contains the squared slowness $\mathbf{m}$ and damping term $\mathbf{\eta}$ as `Function` objects:
 
-```
-python
+```python
 # Set up discretized wave equation
 pde = model.m * u.dt2 - u.laplace + model.damp * u.dt
 ```
@@ -117,8 +114,7 @@ $${#WEstencil}
 
 In Python, we can rearrange our `pde` expression automatically using the SymPy utility function `solve`, to create a stencil expression that defines the update of the wavefield for the new time step $\mathbf{u}(\text{time}+s)$, which is expressed as `u.forward` in Devito:
 
-```
-python
+```python
     # Rearrange PDE to obtain new wavefield at next time step
     stencil = Eq(u.forward, solve(pde, u.forward)[0])
 ```
@@ -150,8 +146,7 @@ The `src.inject` now injects the current time sample of the Ricker wavelet (weig
 
 There is a corresponding wrapper function for receivers as well, which creates a `SparseFunction` object for a given number `npoint` of receivers, number `nt` of time samples  and specified receiver coordinates `rec_coords` (with `ndim=2`, since we have a two-dimensional example). 
 
-```
-python
+```python
 	# create receiver array from receiver coordinates
 	rec = Receiver(name='rec', npoint=101, ntime=nt, ndim=2, coordinates=rec_coords)
 	rec_term = rec.interpolate(u, offset=model.nbpml)
@@ -184,8 +179,7 @@ simple Python function call by supplying the number of timesteps
 to extract the final wavefield and shotrecord directly from the
 symbolic function objects.
 
-```
-python	
+```python	
   # Generate wavefield snapshots and a shot record
   op_fwd(time=n_timesteps, dt=model.critical_dt)
 
