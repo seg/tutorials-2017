@@ -27,8 +27,10 @@ Devito is required to execute the notebook and can be installed following the in
 The acoustic wave equation with the squared slowness $m$, defined as $m(x,y)=c^{-2}(x,y)$ with $c(x,y)$ being the unknown spatially varying wavespeed, is given by:
 
 $$
+\begin{align}
  m \frac{d^2 u(x,y,t)}{dt^2} - \Delta u(x,y,t) + \eta(x,y) \frac{d u(x,y,t)}{dt}=q(x,y,t;x_s, y_s),
-$$
+\end{align}
+$${#WE}
 
 where $q(x,y,t;x_s,y_s)$ is the seismic source, located at $(x_s,y_s)$ and $\eta(x,y)$ is a space-dependent dampening parameter for the absorbing boundary layer [1]. As shown in Figure #model, the physical model is extended in every direction by `nbpml` grid points to mimic an infinite domain. The dampening term $\eta \frac{d u(x,t)}{dt}$ attenuates the waves in the dampening layer [1] and prevents waves from reflecting at the model boundaries. In Devito, the discrete representations of $m$ and $\eta$ are contained in a `model` object that contains a `grid` object with all relevant information such as the origin of the coordinate system, grid spacing, size of the model and dimensions `x, y, time`---i.e., in `Python` we have
 
@@ -224,3 +226,27 @@ This tutorial and the coming second part are based on Devito version 3.0.3. It r
 - [Tutorial notebooks with latest Devito/master](https://github.com/opesci/Devito/examples/seismic/tutorials)
 
 
+### Acknowledgments
+
+This research was carried out as part of the SINBAD II project with the support of the member organizations of the SINBAD Consortium. This work was financially supported in part by EPSRC grant EP/L000407/1 and the Imperial College London Intel Parallel Computing Centre.
+
+### References
+
+[1] Cerjan, C., Kosloff, D., Kosloff, R., and Reshef, M., 1985, A nonreflecting boundary condition for discrete acoustic and elastic wave equations: GEOPHYSICS, 50, 705–708. doi:10.1190/1.1441945
+
+[2] Lange, M., Kukreja, N., Louboutin, M., Luporini, F., Zacarias, F. V., Pandolfo, V., … Gorman, G., 2016, Devito: Towards a generic finite difference DSL using symbolic python: 6th workshop on python for high-performance and scientific computing. doi:10.1109/PyHPC.2016.9
+
+[3] Meurer A, Smith CP, Paprocki M, Certík O, Kirpichev ˇ
+SB, Rocklin M, Kumar A, Ivanov S, Moore JK, Singh S,
+Rathnayake T, Vig S, Granger BE, Muller RP, Bonazzi F,
+Gupta H, Vats S, Johansson F, Pedregosa F, Curry MJ,
+Terrel AR, Roucka Š, Saboo A, Fernando I, Kulal S, Cim- ˇ
+rman R, Scopatz A. (2017) SymPy: symbolic computing in
+Python. PeerJ Computer Science 3:e103 https://doi.org/10.
+7717/peerj-cs.103
+
+[4] Pratt, R. G., 1999, Seismic waveform inversion in the frequency domain, part 1: Theory and verification in a physical scale model: GEOPHYSICS, 64, 888–901. doi:10.1190/1.1444597
+
+[5] Tarantola, A., 1984, Inversion of seismic reflection data in the acoustic approximation: GEOPHYSICS, 49, 1259–1266. doi:10.1190/1.1441754
+
+[6] Virieux, J., and Operto, S., 2009, An overview of full-waveform inversion in exploration geophysics: GEOPHYSICS, 74, WCC1–WCC26. doi:10.1190/1.3238367
