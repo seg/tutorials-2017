@@ -67,7 +67,7 @@ At the core of Devito's symbolic API are two symbolic types that behave like Sym
 To demonstrate Devito's symbolic capabilities, let us consider a time-dependent function $\mathbf{u}(\text{time}, x, y)$ representing the discrete forward wavefield. We can define this as a `TimeFunction` object in Devito:
 
 ```python
-    u = TimeFunction(name="u", gitd=model.grid, time_order=2,
+    u = TimeFunction(name="u", grid=model.grid, time_order=2,
                      space_order=2, save=True, time_dim=nt)
 ```
 
