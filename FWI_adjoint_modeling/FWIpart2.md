@@ -11,6 +11,9 @@ bibliography:
 
 **MLOU: fix typos/bold/... throughout**
 
+
+**MLOU: The ordering of the subsections is a bit confusing to me**
+
 ## Introduction
 
 **MLOU:small review/intro of adjoint state?**
@@ -37,14 +40,8 @@ The acoustic wave equation for the squared slowness ``m``, defined as ``m(x,y)=c
 	model = Model(vp=vp, origin=origin, spacing=spacing, shape=shape, nbpml=nbpml)
 ```
 
-**MLOU:Change figure to camembert model**
 
-####Figure: {#model}
-![Model](Figures/setup.png){}
-: Representation of the computational domain and its extension, which contains the absorbing boundaries layer.
-
-
-### Backward simulation
+## Adjoint modeling and gradient
 
 **MLOU:split step by step like forward**
 
