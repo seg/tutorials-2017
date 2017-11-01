@@ -9,18 +9,21 @@ bibliography:
 	- bib_tuto.bib
 ---
 
+**MLOU: fix typos/bold/... throughout**
 
 ## Introduction
 
-As part of this tutorial for FWI, we first introduce adjoint propagators that back-propagate the data residual, followed by gradient calculations via cross-correlations of the forward and back-propagated wavefields.
+**MLOU:small review/intro of adjoint state?**
 
-
-- **`adjoint_modeling.ipynb`** --- here we demonstrate how to compute the data residual---i.e., the difference between the synthetic and observed data and how to back-propagate this residual wavefield with a propagator computed with the adjoint wave equation that acts on this residual;
+In this second part of our tutorial serie, we introduce the concept of adjoint modeling that is required for seismic inversion [ref]. We refer to the first part [ref] for forward modeling that will be reused here. We detail adjoint wave-equation and propagators that back-propagate the data residual, followed by gradient calculations via cross-correlations of the forward (see part 1) and back-propagated wavefields. This part is accompanied by a `Jupyter notebook`
+- **`adjoint_modeling.ipynb`** ---, in which we demonstrate how to compute the data residual---i.e., the difference between the synthetic and observed data and how to back-propagate this residual to model the adjoint wavefield. Finally we explain how to build a model update for the FWI problem based on the correlation of the forward and adjoint wavefield.
  
 For technically more sophisticated methods to minimize the FWI objective and ways to compute matrix-free actions of FWI's Jacobian and (Gauss-Newton) Hessian, we refer to Part 3 of this tutorial.
 
 
-## Quick recap on modeling
+## Quick recap on modeling 
+
+**MLOU: necessary or just ref part 1?**
 
 The acoustic wave equation for the squared slowness ``m``, defined as ``m(x,y)=c^{-2}(x,y)`` with ``c(x,y)`` being the unknown spatially varying wavespeed, and ``q(x,y,t;x_s)`` a source located at ``(x_s,y_s)``, is given by:
 
@@ -28,15 +31,13 @@ The acoustic wave equation for the squared slowness ``m``, defined as ``m(x,y)=c
  m \frac{d^2 u(t,x,y)}{dt^2} - \nabla^2 u(t,x,y) + \eta(x,y) \frac{d u(t,x,y)}{dt}=q(t,x,y;x_s, y_s).
 ```
 
-Model, recall forward.
-
 ```python
 	# Define a Devito model with physical size, velocity vp 
 	# and absorbing layer width in number of grid points (nbpml)
 	model = Model(vp=vp, origin=origin, spacing=spacing, shape=shape, nbpml=nbpml)
 ```
 
-**Change figure to camembert model**
+**MLOU:Change figure to camembert model**
 
 ####Figure: {#model}
 ![Model](Figures/setup.png){}
@@ -45,7 +46,7 @@ Model, recall forward.
 
 ### Backward simulation
 
-**split step by step like forward**
+**MLOU:split step by step like forward**
 
 The adjoint wave-equation for an adjoint source (data residual) ``\delta d(x,y,t;x_r, y_r)`` located at ``(x_r, y_r)`` is given by
 
@@ -126,6 +127,8 @@ Before we take a look at what the gradient for our test model looks like, let us
 ### Simple gradient
 Having tested the forward/adjoint wave equations and their propagators, we can now calculate the gradient of the FWI objective function for a simple 2D test model. We choose the so-called Camembert model for this purpose, which consists of a constant medium with a circular high velocity inclusion in its centre. To demonstrate our code, we perform a transmission experiment, with 21 sources on one side of the model and receivers at the other side. The source signature is a ``10\text{Hz}`` Ricker wavelet and we have 101 receivers. We show the first gradient with a constant initial model in Figure #Gradient\.
 
+**MLOU: add true and init models **
+
 ####Figure: {#Gradient}
 ![Gradient for a transmission camembert model and a full shot record](Figures/simplegrad.pdf){width=45%}
 :Gradient for the camembert model transmission experiment. The 21 source are placed on the left-hand side of the model and 101 receivers are located on the right-hand side. See also **`adjoint_gradient.ipynb`**.
@@ -134,19 +137,17 @@ With the gradient calculations explained we are now set to carry out a basic FWI
 
 ## Conclusions
 
-In this first part of the tutorial, we demonstrated how to set up discretized forward and adjoint wave equations, their associated propagators with at runtime code generation, and how to calculate a valid gradient of the FWI objective using the adjoint state method. In part two, we will demonstrate how to set up a complete matrix-free and scalable optimization framework for acoustic FWI.
+In this first part of the tutorial, we demonstrated how to set up adjoint wave equations, their associated propagators with at runtime code generation, and how to calculate a valid gradient of the FWI objective using the adjoint state method. In part three, we will demonstrate how to set up a complete matrix-free and scalable optimization framework for acoustic FWI.
 
-### Installation
+## Installation
 
-This tutorial and the coming second part are based on Devito version 3.0.3. It also require to install the full software with examples, not only the code generation API. To install devito
+This tutorial is based on Devito version 3.1.0 too. It requires the installation of the full software with examples, not only the code generation API. To install Devito if not already done with the first part
 
-```
-	git clone https://github.com/opesci/devito/tree/v3.0.3
+	git clone -b v3.1.0 https://github.com/opesci/devito
 	cd devito
 	conda env create -f environment.yml
 	source activate devito
 	pip install -e .
-```
  
 ### Usefull links
 
