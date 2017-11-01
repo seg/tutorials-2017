@@ -11,9 +11,6 @@ bibliography:
 
 **MLOU: fix typos/bold/... throughout**
 
-
-**MLOU: The ordering of the subsections is a bit confusing to me**
-
 ## Introduction
 
 **MLOU:small review/intro of adjoint state?**
@@ -43,14 +40,25 @@ The acoustic wave equation for the squared slowness ``m``, defined as ``m(x,y)=c
 
 ## Adjoint modeling and gradient
 
-**MLOU:split step by step like forward**
+While the derivation of the gradient goes beyond the scope of this tutorial, it is important to emphasize how the forward and adjoint wavefields are calculated with the forward and backward simulations. Mathematically, the forward simulation to compute the forward wavefield ``\mathbf{u}`` for each source involves solving the following linear system of equations:
+
+```math {#linWE}
+    \mathbf{A}(\mathbf{m}) \mathbf{u} = \mathbf{q}, 
+```
+where ``\mathbf{q}`` again represents the known discretized source. With the previous definition for the sources, solving this system corresponds in Devito to running `op_fwd.apply()` ( refer to the first part of this tutorial serie [ref]). Solutions for the corresponding adjoint wavefields ``\mathbf{v}`` are computed in a similar fashion by solving
+
+```math {#adjWE}
+    \mathbf{A}^\top (\mathbf{m})\mathbf{v} = \delta \mathbf{d}.
+```
+
+In this expression, we obtain backward propagators by transposing (denoted by the symbol ``^\top``) the linear system associated with the forward simulations. 
 
 The adjoint wave-equation for an adjoint source (data residual) ``\delta d(x,y,t;x_r, y_r)`` located at ``(x_r, y_r)`` is given by
 
 ```math {#WEa}
  m \frac{d^2 v(t,x,y)}{dt^2} - \nabla^2 v(t,x,y) - \eta(x,y) \frac{d v(t,x,y)}{dt}=\delta d(t,x,y;x_r, y_r)
 ```
-with its discrete counterpart stencil that updates hte previsous time step ``v[\text{time}-1]`` (`v.backward in Devito`) as the propagation runs in reverse time order:
+with its discrete counterpart stencil that updates the previsous time step ``v[\text{time}-1]`` (`v.backward in Devito`) as the propagation runs in reverse time order:
 
 ```math {#WEdisadj}
 \mathbf{v}[\text{time}-1] = 2\mathbf{v}[\text{time}] - \mathbf{v}[\text{time}+1] + dt^2\mathbf{m}^{-2} \odot \Big(\Delta \mathbf{v}[\text{time}]+ \delta \mathbf{d}[\text{time}] \Big).
@@ -73,18 +81,19 @@ then we inject the data residual as a source term
 ```python
 	# Receiver setup
 	rec = Receiver(name='rec', npoint=101, ntime=nt, grid=model.grid, coordinates=rec_coords)
-	rec.data = true_data - smoothdata
+	rec.data = true_data - smooth_data
 	rec_term = rec.inject(field=v.backward,  expr=rec * dt**2 / model.m, offset=model.nbpml)
 ```	
 
-and finally, we create the propagator with the flag `time_axis=Forward` to specify that the propagator runs in reverse time order
+where `smoothdata` is the data modeled with `o_fwd` and `true_data` is the field recorded data. Finally, we create the propagator with the flag `time_axis=Forward` to specify that the propagator runs in reverse time order
+
 ```python
 	# Create propagator
 	op_adj = Operator([stencil_v] + src_term + rec_term,
 						time_axis=Backward)
 ```
 
-An animation of the adjoint wavefield is available at **`adjoint_modeling.ipynb`**.
+An animation of the adjoint wavefield is available in **`adjoint_modeling.ipynb`**.
 
 ### Objective and gradient
 
@@ -103,21 +112,6 @@ We minimize FWI objective by computing updates to the slowness that are given by
 ```
 
 where the sum runs over all ``n_t`` time samples.
-
-### Computing the gradient
-
-While the derivation of the above expression for the gradient goes beyond the scope of this tutorial, it is important to emphasize how the forward and adjoint wavefields are calculated with the forward and backward simulations introduced above. Mathematically, the forward simulation to compute the forward wavefield ``\mathbf{u}`` for each source involves solving the following linear system of equations:
-
-```math {#linWE}
-    \mathbf{A}(\mathbf{m}) \mathbf{u} = \mathbf{q}, 
-```
-where ``\mathbf{q}`` again represents the known discretized source. With the previous definition for the sources, solving this system corresponds in Devito to running `op_fwd.apply()`. Solutions for the corresponding adjoint wavefields ``\mathbf{v}`` are computed in a similar fashion by solving
-
-```math {#adjWE}
-    \mathbf{A}^\top (\mathbf{m})\mathbf{v} = \delta \mathbf{d}.
-```
-
-In this expression, we obtain backward propagators by transposing (denoted by the symbol ``^\top``) the linear system associated with the forward simulations. In Devito, the computation of the adjoint wavefield is carried out by `op_ad.apply()`.
 
 When calculating the gradient, we need, as explained in Equation #FWIgrad, to simply sum the pointwise multiplication of the adjoint wavefield with the second-time derivative of the forward wavefield. In Devito, this is symbolically expressed by 
 
