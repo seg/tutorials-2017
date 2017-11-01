@@ -13,10 +13,10 @@ bibliography:
 
 ## Introduction
 
-**MLOU:small review/intro of adjoint state?**
+**MLOU:small review/intro of adjoint state/refs**
 
 In this second part of our tutorial serie, we introduce the concept of adjoint modeling that is required for seismic inversion [ref]. We refer to the first part [ref] for forward modeling that will be reused here. We detail adjoint wave-equation and propagators that back-propagate the data residual, followed by gradient calculations via cross-correlations of the forward (see part 1) and back-propagated wavefields. This part is accompanied by a `Jupyter notebook`
-- **`adjoint_modeling.ipynb`** ---, in which we demonstrate how to compute the data residual---i.e., the difference between the synthetic and observed data and how to back-propagate this residual to model the adjoint wavefield. Finally we explain how to build a model update for the FWI problem based on the correlation of the forward and adjoint wavefield.
+--- **`adjoint_modeling.ipynb`** ---, in which we demonstrate how to compute the data residual---i.e., the difference between the synthetic and observed data and how to back-propagate this residual to model the adjoint wavefield. Finally we explain how to build a model update for the FWI problem based on the correlation of the forward and adjoint wavefield.
  
 For technically more sophisticated methods to minimize the FWI objective and ways to compute matrix-free actions of FWI's Jacobian and (Gauss-Newton) Hessian, we refer to Part 3 of this tutorial.
 
@@ -116,9 +116,16 @@ where the sum runs over all ``n_t`` time samples.
 When calculating the gradient, we need, as explained in Equation #FWIgrad, to simply sum the pointwise multiplication of the adjoint wavefield with the second-time derivative of the forward wavefield. In Devito, this is symbolically expressed by 
 
 ```python
-grad = Function(name="grad", grid=model.grid)
+grad = Function(name="g", grid=model.grid)
 grad_update = Eq(grad, grad - u.dt2 * v)
 ``` 
+
+
+and the summation over time is implicit a the right-hand-side is time dependent. At each time step the gradient will accumulate `- u.dt2 * v` and the symbolic stencil writes as:
+
+```math {#gradupd}
+ \mathbf{g} = \mathbf{g} - \frac{\mathbf{u}[\text{time-dt}] - 2\mathbf{u}[\text{time}] + \mathbf{u}[\text{time+dt}]}{dt^2} \mathbf{v}[\text{time}]
+```
 
 The full script for calculating the gradient is given in the notebook **`adjoint_gradient.ipynb`**. The computation of the gradient itself is implemented by adding the gradient update to the adjoint propagator. In `Python`, we have
 
