@@ -28,6 +28,7 @@ The acoustic wave equation for the squared slowness ``m``, defined as ``m(x,y)=c
  m \frac{d^2 u(t,x,y)}{dt^2} - \nabla^2 u(t,x,y) + \eta(x,y) \frac{d u(t,x,y)}{dt}=q(t,x,y;x_s, y_s).
 ```
 
+Model, recall forward.
 
 ```python
 	# Define a Devito model with physical size, velocity vp 
@@ -35,12 +36,16 @@ The acoustic wave equation for the squared slowness ``m``, defined as ``m(x,y)=c
 	model = Model(vp=vp, origin=origin, spacing=spacing, shape=shape, nbpml=nbpml)
 ```
 
+**Change figure to camembert model**
+
 ####Figure: {#model}
-![Model](Figures/Figure1_composed.pdf){}
+![Model](Figures/setup.png){}
 : Representation of the computational domain and its extension, which contains the absorbing boundaries layer.
 
 
 ### Backward simulation
+
+**split step by step like forward**
 
 The adjoint wave-equation for an adjoint source (data residual) ``\delta d(x,y,t;x_r, y_r)`` located at ``(x_r, y_r)`` is given by
 
@@ -50,10 +55,10 @@ The adjoint wave-equation for an adjoint source (data residual) ``\delta d(x,y,t
 with its discrete counterpart stencil
 
 ```math {#WEdisadj}
-\vd{v}[time-1] = 2\vd{v}[time] - \vd{v}[time+1] + \Delta t^2\vd{m}^{-2} \odot \Big(\Delta \vd{v}[time]+ \delta \vd{d}[time] \Big), \quad i=n_t-1 \cdots  1.
+\mathbf{v}[\text{time}-1] = 2\mathbf{v}[\text{time}] - \mathbf{v}[\text{time}+1] + dt^2\mathbf{m}^{-2} \odot \Big(\Delta \mathbf{v}[\text{time}]+ \delta \mathbf{d}[\text{time}] \Big).
 ```
 
-While deriving expressions for adjoint wave equations for more general wave equations may be challenging, the implementation of the adjoint wave equation is straightforward in the acoustic case (except for what happens at in the damping layer) where the system is self-adjoint. So, the only important detail to consider, aside from running the time backwards, is to adjust the non self-adjoint boundary condition, which corresponds to changing the sign of the damping to prevent the equation from becoming unstable. With Devito we define the adjoint wave equation and its propagator in a similar manner as during forward simulations except that we inject the data residual, ``\delta {d}``. In `Python`, we have
+While deriving expressions for adjoint wave equations for more general wave equations may be challenging, the implementation of the adjoint wave equation is straightforward in the acoustic case (except for what happens at in the damping layer) where the system is self-adjoint. So, the only important detail to consider, aside from running the time backwards, is to adjust the non self-adjoint boundary condition, which corresponds to changing the sign of the damping to prevent the equation from becoming unstable. With Devito we define the adjoint wave equation and its propagator in a similar manner as during forward simulations except that we inject the data residual, ``\delta \mathbf{d}``. In `Python`, we have
 
 ```python
 	# Discrete adjoint wavefield
@@ -76,33 +81,33 @@ An animation of the adjoint wavefield is available at **`adjoint_modeling.ipynb`
 
 ### Objective and gradient
 
-Full-waveform inversion aims to recover accurate estimates of the discrete wave slowness vector ``\vd{m}`` from a given set of measurements of the pressure wavefield ``\vd{u}`` recorded at predefined receiver locations. Following [@LionsJL1971,@Tarantola], inversion corresponds to minimizing the following FWI objective: 
+Full-waveform inversion aims to recover accurate estimates of the discrete wave slowness vector ``\mathbf{m}`` from a given set of measurements of the pressure wavefield ``\mathbf{u}`` recorded at predefined receiver locations. Following [@LionsJL1971,@Tarantola], inversion corresponds to minimizing the following FWI objective: 
 
 ```math {#FWI}
-	\mathop{\hbox{minimize}}_{\vd{m}} f(\vd{m})=\frac{1}{2}\left\lVert \vd{d}^{\mathrm{syn}}(\vd{m};\vd{q}) - \vd{d}^{\mathrm{obs}}\right\rVert_2^2,\\
+	\mathop{\hbox{minimize}}_{\mathbf{m}} f(\mathbf{m})=\frac{1}{2}\left\lVert \mathbf{d}^{\mathrm{syn}}(\mathbf{m};\mathbf{q}) - \mathbf{d}^{\mathrm{obs}}\right\rVert_2^2,\\
 ```
 
-where ``\vd{d}^{\mathrm{syn}}(\vd{m};\vd{q})`` is the synthetic data generated with the described forward simulation. These forward simulations depend on the  slowness  vector ``\vd{m}`` and the discretized source function ``\vd{q}``, which we assume to be known. FWI aims to find an ``\vd{m}`` that minimizes the energy of the misfit between synthetic data and data observed in the field collected in the vector ``\vd{d}``. 
+where ``\mathbf{d}^{\mathrm{syn}}(\mathbf{m};\mathbf{q})`` is the synthetic data generated with the described forward simulation. These forward simulations depend on the  slowness  vector ``\mathbf{m}`` and the discretized source function ``\mathbf{q}``, which we assume to be known. FWI aims to find an ``\mathbf{m}`` that minimizes the energy of the misfit between synthetic data and data observed in the field collected in the vector ``\mathbf{d}``. 
 
-We minimize FWI objective by computing updates to the slowness that are given by the gradient of this objective with respect to ``\vd{m}``. Following work by @Virieux, this gradient is given by the zero-lag term of the cross-correlation between the second-time derivative of the forward wavefield, ``\vd{\ddot{u}}``, and the adjoint wavefield, ``\vd{v}``---i.e. we have 
+We minimize FWI objective by computing updates to the slowness that are given by the gradient of this objective with respect to ``\mathbf{m}``. Following work by @Virieux, this gradient is given by the zero-lag term of the cross-correlation between the second-time derivative of the forward wavefield, ``\mathbf{\ddot{u}}``, and the adjoint wavefield, ``\mathbf{v}``---i.e. we have 
 
 ```math {#FWIgrad}
- \nabla f(\vd{m};\vd{q})= - \sum_{{time} =1}^{n_t}\vd{\ddot{u}}[time]\odot \vd{v}[time],
+ \nabla f(\mathbf{m};\mathbf{q})= - \sum_{{time} =1}^{n_t}\mathbf{\ddot{u}}[time]\odot \mathbf{v}[time],
 ```
 
 where the sum runs over all ``n_t`` time samples.
 
 ### Computing the gradient
 
-While the derivation of the above expression for the gradient goes beyond the scope of this tutorial, it is important to emphasize how the forward and adjoint wavefields are calculated with the forward and backward simulations introduced above. Mathematically, the forward simulation to compute the forward wavefield ``\vd{u}`` for each source involves solving the following linear system of equations:
+While the derivation of the above expression for the gradient goes beyond the scope of this tutorial, it is important to emphasize how the forward and adjoint wavefields are calculated with the forward and backward simulations introduced above. Mathematically, the forward simulation to compute the forward wavefield ``\mathbf{u}`` for each source involves solving the following linear system of equations:
 
 ```math {#linWE}
-    \vd{A}(\vd{m}) \vd{u} = \vd{q}, 
+    \mathbf{A}(\mathbf{m}) \mathbf{u} = \mathbf{q}, 
 ```
-where ``\vd{q}`` again represents the known discretized source. With the previous definition for the sources, solving this system corresponds in Devito to running `op_fwd.apply()`. Solutions for the corresponding adjoint wavefields ``\vd{v}`` are computed in a similar fashion by solving
+where ``\mathbf{q}`` again represents the known discretized source. With the previous definition for the sources, solving this system corresponds in Devito to running `op_fwd.apply()`. Solutions for the corresponding adjoint wavefields ``\mathbf{v}`` are computed in a similar fashion by solving
 
 ```math {#adjWE}
-    \vd{A}^\top (\vd{m})\vd{v} = \delta \vd{d}.
+    \mathbf{A}^\top (\mathbf{m})\mathbf{v} = \delta \mathbf{d}.
 ```
 
 In this expression, we obtain backward propagators by transposing (denoted by the symbol ``^\top``) the linear system associated with the forward simulations. In Devito, the computation of the adjoint wavefield is carried out by `op_ad.apply()`.
@@ -150,39 +155,20 @@ This tutorial and the coming second part are based on Devito version 3.0.3. It a
 - [Tutorial notebooks with latest Devito/master](https://github.com/opesci/Devito/examples/seismic/tutorials)
 
 
-### Need to add acknow
-##references
+## Acknowledgments
 
-``` math_def
-\def\argmin{\mathop{\rm arg\,min}}
-\def\vec{\mbox{``\mathrm{vec}``}}
-\def\ivec{\mbox{``\mathrm{vec}^{-1}``}}
-\newcommand{\m}{{\mathsf{m}}}
-\newcommand{\PsDO}{\mbox{PsDO\,}}
-\newcommand{\Id}{\mbox{``\tensor{I}\,``}}
-\newcommand{\R}{\mbox{``\mathbb{R}``}}
-\newcommand{\Z}{\mbox{``\mathbb{Z}``}}
-\newcommand{\DE}{:=}
-\newcommand{\Order}{\mbox{``{\cal O}``}} \def\bindex#1{{\mathcal{#1}}}
-\def\pector#1{\mathrm{\mathbf{#1}}} 
-\def\cector#1{#1} 
-\def\censor#1{#1} 
-\def\vd#1{\mathbf{#1}}
-\def\fvector#1{{\widehat{\vd{#1}}}}
-\def\evector#1{{\widetilde{\vd{#1}}}}
-\def\pvector#1{{\breve{\vd{#1}}}}
-\def\pector#1{\mathrm{#1}}
-\def\ctensor#1{\bm{\mathcal{#1}}}
-\def\tensorm#1{\bm{#1}}
-\def\tensor#1{\vd{#1}}
-\def\hensor#1{\tensor{#1}}
-\def\uensor#1{\underline{\bm{#1}}}
-\def\hector#1{\vd{#1}}
-\def\ftensor#1{{\widehat{\tensor{#1}}}}
-\def\calsor#1{{\boldsymbol{\mathcal{#1}}}}
-\def\optensor#1{{\boldsymbol{\mathcal{#1}}}}
-\def\hvector#1{\hat{\boldsymbol{\mathbf{#1}}}}
-\def\minim{\mathop{\hbox{minimize}}}
-\newcommand{\norm}[1]{\left\lVert#1\right\rVert_2^2}
-\newcommand{\overbar}[1]{\mkern 1.5mu\overline{\mkern-1.5mu#1\mkern-1.5mu}\mkern 1.5mu}
-```
+This research was carried out as part of the SINBAD II project with the support of the member organizations of the SINBAD Consortium. This work was financially supported in part by EPSRC grant EP/L000407/1 and the Imperial College London Intel Parallel Computing Centre.
+
+## References
+
+[1] Cerjan, C., Kosloff, D., Kosloff, R., and Reshef, M., 1985, A nonreflecting boundary condition for discrete acoustic and elastic wave equations: GEOPHYSICS, 50, 705–708. doi:10.1190/1.1441945
+
+[2] Lange, M., Kukreja, N., Louboutin, M., Luporini, F., Zacarias, F. V., Pandolfo, V., … Gorman, G., 2016, Devito: Towards a generic finite difference DSL using symbolic python: 6th workshop on python for high-performance and scientific computing. doi:10.1109/PyHPC.2016.9
+
+[3] Meurer A, Smith CP, Paprocki M, Certík O, Kirpichev ˇ SB, Rocklin M, Kumar A, Ivanov S, Moore JK, Singh S, Rathnayake T, Vig S, Granger BE, Muller RP, Bonazzi F, Gupta H, Vats S, Johansson F, Pedregosa F, Curry MJ, Terrel AR, Roucka Š, Saboo A, Fernando I, Kulal S, Cim- ˇ rman R, Scopatz A. (2017) SymPy: symbolic computing in Python. PeerJ Computer Science 3:e103 https://doi.org/10. 7717/peerj-cs.103
+
+[4] Pratt, R. G., 1999, Seismic waveform inversion in the frequency domain, part 1: Theory and verification in a physical scale model: GEOPHYSICS, 64, 888–901. doi:10.1190/1.1444597
+
+[5] Tarantola, A., 1984, Inversion of seismic reflection data in the acoustic approximation: GEOPHYSICS, 49, 1259–1266. doi:10.1190/1.1441754
+
+[6] Virieux, J., and Operto, S., 2009, An overview of full-waveform inversion in exploration geophysics: GEOPHYSICS, 74, WCC1–WCC26. doi:10.1190/1.3238367
