@@ -21,7 +21,7 @@ In this second part of our tutorial serie, we introduce the concept of adjoint m
 For technically more sophisticated methods to minimize the FWI objective and ways to compute matrix-free actions of FWI's Jacobian and (Gauss-Newton) Hessian, we refer to Part 3 of this tutorial.
 
 
-## Quick recap on modeling 
+## Quick recap on forward modeling 
 
 **MLOU: necessary or just ref part 1?**
 
@@ -51,9 +51,9 @@ The acoustic wave equation for the squared slowness ``m``, defined as ``m(x,y)=c
 The adjoint wave-equation for an adjoint source (data residual) ``\delta d(x,y,t;x_r, y_r)`` located at ``(x_r, y_r)`` is given by
 
 ```math {#WEa}
- m \frac{d^2 v(t,x,y)}{dt^2} - \nabla^2 v(r,x,y) - \eta(x,y) \frac{d v(r,x,y)}{dt}=\delta d(r,x,y;x_r, y_r)
+ m \frac{d^2 v(t,x,y)}{dt^2} - \nabla^2 v(t,x,y) - \eta(x,y) \frac{d v(t,x,y)}{dt}=\delta d(t,x,y;x_r, y_r)
 ```
-with its discrete counterpart stencil
+with its discrete counterpart stencil that updates hte previsous time step ``v[\text{time}-1]`` (`v.backward in Devito`) as the propagation runs in reverse time order:
 
 ```math {#WEdisadj}
 \mathbf{v}[\text{time}-1] = 2\mathbf{v}[\text{time}] - \mathbf{v}[\text{time}+1] + dt^2\mathbf{m}^{-2} \odot \Big(\Delta \mathbf{v}[\text{time}]+ \delta \mathbf{d}[\text{time}] \Big).
@@ -61,18 +61,27 @@ with its discrete counterpart stencil
 
 While deriving expressions for adjoint wave equations for more general wave equations may be challenging, the implementation of the adjoint wave equation is straightforward in the acoustic case (except for what happens at in the damping layer) where the system is self-adjoint. So, the only important detail to consider, aside from running the time backwards, is to adjust the non self-adjoint boundary condition, which corresponds to changing the sign of the damping to prevent the equation from becoming unstable. With Devito we define the adjoint wave equation and its propagator in a similar manner as during forward simulations except that we inject the data residual, ``\delta \mathbf{d}``. In `Python`, we have
 
+First we define the adjoint wavefield and create the symbolic pde and the stencil of #WEdisadj with the SymPy `solve` utility
+
 ```python
 	# Discrete adjoint wavefield
 	v = TimeFunction(name="v", grid=model.grid, time_order=2, space_order=2)
-	
+	# Define adjoint wave equation
+	pde = model.m * v.dt2 - v.laplace - model.damp * v.dt
+	stencil_v = Eq(v.backward, solve(pde, v.backward)[0])
+```
+
+then we inject the data residual as a source term
+
+```python
 	# Receiver setup
 	rec = Receiver(name='rec', npoint=101, ntime=nt, grid=model.grid, coordinates=rec_coords)
+	rec.data = true_data - smoothdata
 	rec_term = rec.inject(field=v.backward,  expr=rec * dt**2 / model.m, offset=model.nbpml)
-	
-	# Define adjoint wave equation
-	pde = model.m * v.dt2 - v.laplace + model.damp * v.dt
-	stencil_v = Eq(v.backward, solve(pde, v.backward)[0])
-	
+```	
+
+and finally, we create the propagator with the flag `time_axis=Forward` to specify that the propagator runs in reverse time order
+```python
 	# Create propagator
 	op_adj = Operator([stencil_v] + src_term + rec_term,
 						time_axis=Backward)
@@ -85,15 +94,15 @@ An animation of the adjoint wavefield is available at **`adjoint_modeling.ipynb`
 Full-waveform inversion aims to recover accurate estimates of the discrete wave slowness vector ``\mathbf{m}`` from a given set of measurements of the pressure wavefield ``\mathbf{u}`` recorded at predefined receiver locations. Following [@LionsJL1971,@Tarantola], inversion corresponds to minimizing the following FWI objective: 
 
 ```math {#FWI}
-	\mathop{\hbox{minimize}}_{\mathbf{m}} f(\mathbf{m})=\frac{1}{2}\left\lVert \mathbf{d}^{\mathrm{syn}}(\mathbf{m};\mathbf{q}) - \mathbf{d}^{\mathrm{obs}}\right\rVert_2^2,\\
+	\mathop{\hbox{minimize}}_{\mathbf{m}} f(\mathbf{m};\mathbf{q})=\frac{1}{2}\left\lVert \mathbf{d}^{\mathrm{syn}}(\mathbf{m};\mathbf{q}) - \mathbf{d}^{\mathrm{obs}}\right\rVert_2^2,\\
 ```
 
 where ``\mathbf{d}^{\mathrm{syn}}(\mathbf{m};\mathbf{q})`` is the synthetic data generated with the described forward simulation. These forward simulations depend on the  slowness  vector ``\mathbf{m}`` and the discretized source function ``\mathbf{q}``, which we assume to be known. FWI aims to find an ``\mathbf{m}`` that minimizes the energy of the misfit between synthetic data and data observed in the field collected in the vector ``\mathbf{d}``. 
 
-We minimize FWI objective by computing updates to the slowness that are given by the gradient of this objective with respect to ``\mathbf{m}``. Following work by @Virieux, this gradient is given by the zero-lag term of the cross-correlation between the second-time derivative of the forward wavefield, ``\mathbf{\ddot{u}}``, and the adjoint wavefield, ``\mathbf{v}``---i.e. we have 
+We minimize FWI objective by computing updates to the slowness that are given by the gradient of this objective with respect to ``\mathbf{m}``. Following work by @Virieux, this gradient is given by the zero-lag term of the cross-correlation between the second-time derivative of the forward wavefield, ``\mathbf{\ddot{u}}`` (obtained in the part 1 of the tutorial serie), and the adjoint wavefield, ``\mathbf{v}``---i.e. we have 
 
 ```math {#FWIgrad}
- \nabla f(\mathbf{m};\mathbf{q})= - \sum_{{time} =1}^{n_t}\mathbf{\ddot{u}}[time]\odot \mathbf{v}[time],
+ \nabla f(\mathbf{m};\mathbf{q})= - \sum_{{\text{time}} =1}^{n_t}\mathbf{\ddot{u}}[\text{time}]\odot \mathbf{v}[\text{time}],
 ```
 
 where the sum runs over all ``n_t`` time samples.
@@ -113,10 +122,17 @@ where ``\mathbf{q}`` again represents the known discretized source. With the pre
 
 In this expression, we obtain backward propagators by transposing (denoted by the symbol ``^\top``) the linear system associated with the forward simulations. In Devito, the computation of the adjoint wavefield is carried out by `op_ad.apply()`.
 
-When calculating the gradient, we need, as explained in Equation #FWIgrad, to simply sum the pointwise multiplication of the adjoint wavefield with the second-time derivative of the forward wavefield. In Devito, this is symbolically expressed by `grad_update = Eq(grad, grad - u.dt2 * v)`. The full script for calculating the gradient is given in the notebook **`adjoint_gradient.ipynb`**. The computation of the gradient itself is implemented by adding the gradient update to the adjoint propagator. In `Python`, we have
+When calculating the gradient, we need, as explained in Equation #FWIgrad, to simply sum the pointwise multiplication of the adjoint wavefield with the second-time derivative of the forward wavefield. In Devito, this is symbolically expressed by 
 
 ```python
-	op_grad = Operator([stencil_v] + src_term + rec_term + grad_update,
+grad = Function(name="grad", grid=model.grid)
+grad_update = Eq(grad, grad - u.dt2 * v)
+``` 
+
+The full script for calculating the gradient is given in the notebook **`adjoint_gradient.ipynb`**. The computation of the gradient itself is implemented by adding the gradient update to the adjoint propagator. In `Python`, we have
+
+```python
+	op_grad = Operator([stencil_v] + rec_term + grad_update,
 						time_axis=Backward)
 ```
 
