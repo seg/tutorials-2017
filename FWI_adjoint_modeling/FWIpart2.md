@@ -123,7 +123,9 @@ Solving the adjoint wave equation by running `op_grad(time=nt, dt=model.critical
 **show true model and gradient. add sources and receivers to plots (with src/rec labels) and colorbar with colorbar labels**
 
 ####Figure: {#Gradient}
-![](Figures/simplegrad.pdf){width=50%}
+![](Figures/camembert_true.pdf){width=33%}
+![](Figures/camembert_init.pdf){width=33%}
+![](Figures/simplegrad.pdf){width=33%}
 : Camembert velocity model and the FWI gradient for 21 source locations, where each shot is recorded by 101 receivers located on the right-hand side of the model. The initial model used to compute the predicted data and gradient is a constant velocity model with the background velocity of the true model. This result can be reproduced by running the script **`adjoint_gradient.ipynb`**.
 
 The final step of the adjoint modeling and gradient part is unit testing, i.e. we ensure that the adjoints and gradients are implemented correctly. Incorrect adjoints can lead to unpredictable behaviour during and inversion and in the worst case cause slower convergence or convergence to wrong solutions. Since our forward-adjoint wave equation solvers implicitly correspond to forward-adjoint matrix-vector products $\mathbf{F} \mathbf{q}$ and $\mathbf{F}^\top\mathbf{\delta d}$, we need to ensure that the relationship $\delta \mathbf{d}^\top \mathbf{F} \mathbf{q} = \mathbf{q}^\top\mathbf{F}^\top\mathbf{\delta d}$ holds within machine precision (see **`tests/test_adjointA.py`** for the full adjoint test). Furthermore, we verify the correct implementation of the FWI gradient by ensuring that using the gradient leads to first order convergence. The gradient test can be found in **`tests/test_gradient.py`**.
