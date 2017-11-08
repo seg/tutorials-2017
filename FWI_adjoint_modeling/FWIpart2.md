@@ -82,6 +82,10 @@ Finally, we create the full propagator by adding the source expression to our pr
 
 In contrast to forward modeling, we do not need to define a (receiver) sampling operator, since we are only intersted in the adjoint wavefield itself. The full script for setting up the adjoint wave equation, including an animation of the adjoint wavefield is available in **`adjoint_modeling.ipynb`**.
 
+
+**MLOU: I can add snapshot of adjoint wavefield if necessary and enough space**
+
+
 ## Computing the FWI gradient
 
 With propagators to solve forward and adjoint wave equations, we now have all parts in place to compute function values and gradients of the FWI objective function. The goal of FWI is to estimate a discrete parametrization of the subsurface by minimizing the misfit between the observed shot records of a seismic survey and numerically modeled shot records. The predicted shot records are obtained by solving an individual wave equation per shot location and depend on the parametrization $\mathbf{m}$ of our wave propagator. The most common function for measuring the data misfit between the observed and modeled data is the $\ell_2$-norm, which leads to the following objective function [@LionsJL1971,@Tarantola]:
@@ -120,13 +124,12 @@ Since the gradient is calculated as part of the adjoint time loop, we add the ex
 
 Solving the adjoint wave equation by running `op_grad(time=nt, dt=model.critical_dt)` from the Python command line now includes computing the FWI gradient, which afterwards can be accessed with `op_grad.gradient`. To further demonstrate the gradient computation, we perform a small seismic transmission experiment with the Camembert model, a constant velocity model with a circular high velocity inclusion in its center. For a transmission experiment, we place 21 seismic sources on the left-hand side of the model and 101 receivers on the right-hand side. We then use the forward propagator from part 1 to independently model the 21 "observed" shot records using the true model. As the initial model for our gradient calculation, we use a constant velocity model with the same velocity as the true model, but without the circular velocity perturbation. We then model the 21 predicted shot records for the initial model, calculate the data residual and gradient for each shot and then sum all 21 gradients to obtain the full gradient (Figure #Gradient). This result can be reproduced with the notebook **`adjoint_gradient.ipynb`**.
 
-**show true model and gradient. add sources and receivers to plots (with src/rec labels) and colorbar with colorbar labels**
 
 ####Figure: {#Gradient}
 ![](Figures/camembert_true.pdf){width=33%}
 ![](Figures/camembert_init.pdf){width=33%}
 ![](Figures/simplegrad.pdf){width=33%}
-: Camembert velocity model and the FWI gradient for 21 source locations, where each shot is recorded by 101 receivers located on the right-hand side of the model. The initial model used to compute the predicted data and gradient is a constant velocity model with the background velocity of the true model. This result can be reproduced by running the script **`adjoint_gradient.ipynb`**.
+: Camembert velocity true and initial model with receiver locations and the center source and the FWI gradient for 21 source locations, where each shot is recorded by 101 receivers located on the right-hand side of the model. The initial model used to compute the predicted data and gradient is a constant velocity model with the background velocity of the true model. This result can be reproduced by running the script **`adjoint_gradient.ipynb`**.
 
 The final step of the adjoint modeling and gradient part is unit testing, i.e. we ensure that the adjoints and gradients are implemented correctly. Incorrect adjoints can lead to unpredictable behaviour during and inversion and in the worst case cause slower convergence or convergence to wrong solutions. Since our forward-adjoint wave equation solvers implicitly correspond to forward-adjoint matrix-vector products $\mathbf{F} \mathbf{q}$ and $\mathbf{F}^\top\mathbf{\delta d}$, we need to ensure that the relationship $\delta \mathbf{d}^\top \mathbf{F} \mathbf{q} = \mathbf{q}^\top\mathbf{F}^\top\mathbf{\delta d}$ holds within machine precision (see **`tests/test_adjointA.py`** for the full adjoint test). Furthermore, we verify the correct implementation of the FWI gradient by ensuring that using the gradient leads to first order convergence. The gradient test can be found in **`tests/test_gradient.py`**.
 
