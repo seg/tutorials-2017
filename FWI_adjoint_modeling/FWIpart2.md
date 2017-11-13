@@ -18,23 +18,21 @@ This tutorial is the second part of a three part tutorial series on full-wavefor
 
 In the second part of this tutorial series, we will discuss how to set up and solve adjoint wave-equations with [Devito] and from that, how we can calculate gradients and function values of the FWI objective function. The gradient of FWI is most commonly computed via the adjoint state method, by cross-correlating forward and adjoint wavefields and summing the contributions over all time steps (refer to @Plessix2006 in the context of seismic inversion). Calculating the gradient (for one source location) therefore consists of three steps:
 
-* Solving a forward wave-equation to model a shot record and save the forward wavefields for each source.
+* Solving a forward wave-equation to model a shot record and saving the forward wavefields for each source.
 
 * Computing the data residual between the predicted and observed data.
 
 * Solving an adjoint wave-equation with the data residual as the adjoint source. In the adjoint (reverse) time loop, cross correlate the second time derivative of the forward wavefield with the adjoint wavefield and sum over time.
 
-{++We start with the definition and derivation of the adjoint wave-equation and its [Devito] stencil, then we show how to compute the gradient of the conventional leas-square FWI misfit function. Finally we show a simple gradient on a 2D model and introduce a verification framework as well as a simple FWI gradient descent example in the notebook **`adjoint_modeling.ipynb`**. As usual, this tutorial is accompanied by all the code you need to reproduce the figures. Go to  github.com/seg/tutorials-2017 and follow the links.++}
+{++We start with the definition and derivation of the adjoint wave-equation and its [Devito] stencil and then show how to compute the gradient of the conventional least squares FWI misfit function. We demonstrate the gradient computation on a simple 2D model and introduce a verification framework for unit testing. Furthermore, we provide a simple FWI gradient descent example, which can be found in the notebook **`adjoint_modeling.ipynb`**. As usual, this tutorial is accompanied by all the code you need to reproduce the figures. Go to  github.com/seg/tutorials-2017 and follow the links.++}
 
 ## The adjoint wave-equation
 
-Adjoint wave-equations are a main component in seismic inversion algorithm and require to be accurate and tested. The derivation of the adjoint wave-equations in the acoustic case is easy as it is self-adjoint without absorbing boundary. However there are many discrete wave-equations that do not have that property (such as TTI [@TTI]) and needs rigorous thinking. We concentrate here, as in part 1, on the acoustic case to illustrate seismic inversion framework. 
-
-To implement the adjoint wave-equation with [Devito], we once again start from the PDE in continuous form. With the variables defined as in part 1 and the data residual {==$\delta d(x,y,t; x_r, y_r)$, located at $x_r, y_r$ {++(receivers locations)++},==} 
+Adjoint wave-equations are a main component in seismic inversion algorithms and are required for computing gradients of both linear and non-linear objective functions. To ensure stability of the adjoint modeling scheme and the expected convergence of inversion algorithms, it is very important that the adjoint wave equation is implemented correctly, i.e. that it is in fact the adjoint (transpose) of the forward wave equation. The derivation of the adjoint wave-equation in the acoustic case is simple, as it is self-adjoint if we ignore the absorbing boundaries for the moment. However, in the general case, discrete wave-equations do not have this property (such as the coupled anisotropic TTI wave equation [@TTI]) and require correct derivations of their adjoints. We concentrate here, as in part 1, on the acoustic case and follow an optimize-discretize approach, which means we write out the adjoint wave equation for the continuous case first and then discretize it, using finite difference operators of the same order as for the forward equation. With the variables defined as in part 1 and the data residual {==$\delta d(x,y,t; x_r, y_r)$, located at $x_r, y_r$ {++(receivers locations)++},==} 
 
  {>>Not sure I follow this notation. It is the residual inserted at the receiver locations.<<} 
  
- as the adjoint source, the adjoint wave-equation is given by:
+ as the adjoint source, the continuous adjoint wave-equation is given by:
 
 ```math {#WEa}
  m(x,y) \frac{d^2 v(t,x,y)}{dt^2} - \nabla^2 v(t,x,y) - \eta(x,y) \frac{d v(t,x,y)}{dt}=\delta d(t,x,y;x_r, y_r)
@@ -57,7 +55,7 @@ Following part 1, we first define the discrete adjoint wavefield $\mathbf{v}$ as
 	stencil_v = Eq(v.backward, solve(pde, v.backward)[0])
 ```
 
-Just as for the forward wave-equation, `stencil_v` defines the update for the adjoint wavefield of a single time step. The only difference is that, while the forward modeling propagator goes forward in time, the adjoint propagator goes backward in time (initial time conditions for the forward propagator turn into final time conditions for the adjoint propagator) and corresponds to the expression: 
+Just as for the forward wave-equation, `stencil_v` defines the update for the adjoint wavefield of a single time step. The only difference is that, while the forward modeling propagator goes forward in time, the adjoint propagator goes backwards in time, since the initial time conditions for the forward propagator turn into final time conditions for the adjoint propagator. As for the forward stencil, we can write out the corresponding discrete expression for the update of the adjoint wavefield:
 
 {>>Role of ``\text{time}`` unclear. It just to be an integer index but I am not longer sure. Was also an issue in paper 1. Add what interval it runs on.<<}{>>MLOU: \text{time} interval added, it follows Devito indexing naming convention<<}
 
@@ -84,7 +82,7 @@ Finally, we create the full propagator by adding the source expression to our pr
 	op_adj = Operator([stencil_v] + src_term, time_axis=Backward)
 ```
 
-In contrast to forward modeling, we do not need any measurment ([Devito] `interpolate`) since we are only interested in the adjoint wavefield itself. 
+In contrast to forward modeling, we do not record any measurments at the surface since we are only interested in the adjoint wavefield itself. 
 {>>Needed, we did not really introduce these operators, we only mentioned that we extract/save the wavefield at the receiver locations. We leave the operators to part 3.<<}{>>MLOU: switch to no measurement necessary<<} 
 
 The full script for setting up the adjoint wave-equation, including an animation of the adjoint wavefield is available in **`adjoint_modeling.ipynb`**.
@@ -104,7 +102,7 @@ The goal of FWI is to estimate a discrete parametrization of the subsurface by m
 
 {>>I very much prefer the ``f(m)``, ``\nabla f(m)`` notation for the objectiv and later in part 3 ``F(m)`` and ``\nabla F(m)`` notation for the forward modeling and its Jacobian.<<}{>> Changed to f<<}
 
-where the index $i$ runs over the total number of shots $n_s$ and the model parameters are the squared slowness. Optimization problems of this form are called non-linear least-squares problems, since the predicted {==data==} {>>Again I am not sure you define it as such since we are missing the restriction operators. Why not simply say that computing ``$\mathbf{d}_i^\mathrm{pred}`` involves inverting ``A``<<}
+where the index $i$ runs over the total number of shots $n_s$ and the model parameters are the squared slowness. Optimization problems of this form are called non-linear least-squares problems, since the predicted {==data==} {>>Again I am not sure you define it as such since we are missing the restriction operators. Why not simply say that computing ``$\mathbf{d}_i^\mathrm{pred}`` involves inverting ``A``<<}{>>PHILIPP: it's true we haven't explicitely talked about restriction operators yet, but part 1 talks about modeling shot records, which is all I'm using here.<<}
 
 modeled with the forward modeling propagator (`op_fwd()` in part 1) depends on the unknown parameters $\mathbf{m}$ non-linearly. The full derivation of the FWI gradient using the adjoint state method is outside the scope of this tutorial, but conceptually we obtain the gradient by applying the chain rule and taking the partial derivative of the inverse wave-equation $\mathbf{A}(\mathbf{m})^{-1}$ with respect to $\mathbf{m}$, which yields the following expression [@Plessix2006; @Virieux]: 
 
@@ -115,7 +113,7 @@ modeled with the forward modeling propagator (`op_fwd()` in part 1) depends on t
 
 The inner sum $\text{time}=1,...,n_t$ runs over the number of computational time steps $n_t$ and $\ddot{\mathbf{u}}$ denotes the second temporal derivative of the forward wavefield $\mathbf{u}$. Computing the gradient of Equation #FWI, therefore corresponds to performing the point-wise multiplication (denoted  by the symbol$\odot$) of the adjoint wavefields with the second time derivative of the forward wavefield and summing over all time steps and source positions. 
 
-In practice, the FWI gradient (for a single source) is calculated in the reverse time-loop while solving the adjoint wave-equation. By updating the adjoint wavefield for the current time step $\mathbf{v}[\text{time}]$, we compute:
+In practice, the FWI gradient (for a single source) is calculated in the reverse time-loop while solving the adjoint wave-equation, because this requires to only precompute and store the forward wavefields, rather than both forward and adjoint wavefields. Therefore, the gradient is computed on-the-fly within the reverse time loop, while updating the adjoint wavefield for the current time step $\mathbf{v}[\text{time}]$:
 
 ```math {#gradupd}
  \mathbf{g} = \mathbf{g} - \frac{\mathbf{u}[\text{time-dt}] - 2\mathbf{u}[\text{time}] + \mathbf{u}[\text{time+dt}]}{dt^2} \odot \mathbf{v}[\text{time}], \quad \text{time}=1 \cdots n_{t-1}
@@ -128,14 +126,11 @@ grad = Function(name="g", grid=model.grid)
 grad_update = Eq(grad, grad - u.dt2 * v)
 ``` 
 
-{++In practice, saving only the forward wavefield ``\mathbf{u}`` is already a memory overburden, and saving both the forward and adjoint wavefield is not feasible. The gradient is therefore computed on-the-fly as part of the adjoint time loop. The definition of the gradient in [Devito] is straightforward and only requires to add the gradient update expression to the adjoint propagator (and turn off the illustrative saving flag on the adjoint wavefield):++}
-{==Since the gradient is calculated as part of the adjoint time loop,==} 
-
-{>>You need to add motivation why.<<}
+{++The definition of the gradient in [Devito] is straightforward and only requires to add the gradient update expression to the adjoint propagator. This yields a single symbolic expression with update instructions for both the adjoint wavefield and the gradient. The Devito compiler then automatically generates code with an adjoint time loop, in which the adjoint wavefield and gradient are individually updated, as defined by the symbolic expressions. Since we do not want to save the full adjoint wavefield for all time steps, we left out the flag `save=True` in the definition for the adjoint wavefield `v` (the default is `save=False`). In Python, the full expression for solving the adjoint wave equation and comuting the gradient is then given by:++}
 
 {--we add the expression for the gradient to our previously defined stencil for the adjoint propagator:--}
  
- {>>This is very elegant and perhaps deserves a bit more text.<<}
+ {>>This is very elegant and perhaps deserves a bit more text.<<}{>> added some elaborations on this<<}
 
 ```python
 	op_grad = Operator([stencil_v] + src_term + grad_update,
@@ -163,11 +158,7 @@ To further demonstrate the gradient computation, {==we perform==}
  
  {>>MLOU: Simple gradient descent in the notebook<<}
  
-a small seismic transmission experiment with the Camembert model, a constant velocity model with a circular high velocity inclusion in its centre. For a transmission experiment, we place ``21`` seismic sources on the left-hand side of the model and ``101`` receivers on the right-hand side. We then use the forward propagator from part 1 to independently model the ``21`` "observed" shot records using the true model. As the initial model for our gradient calculation, we use a constant velocity model with the same velocity as the true model, but without the circular velocity perturbation. We then model the ``21`` predicted shot records for the initial model, calculate the data residual and gradient for each shot and sum all ``21`` gradients
-
- {>>Really or are you summing on the fly.<<} 
-
-to obtain the full gradient (Figure #Gradient). This result can be reproduced with the notebook **`adjoint_modeling.ipynb`**.
+a small seismic transmission experiment with the Camembert model, a constant velocity model with a circular high velocity inclusion in its centre. For a transmission experiment, we place ``21`` seismic sources on the left-hand side of the model and ``101`` receivers on the right-hand side. We then use the forward propagator from part 1 to independently model the ``21`` "observed" shot records using the true model. As the initial model for our gradient calculation, we use a constant velocity model with the same velocity as the true model, but without the circular velocity perturbation. We then model the ``21`` predicted shot records for the initial model, calculate the data residual and gradient for each shot and sum them to obtain the full gradient (Figure #Gradient). This result can be reproduced with the notebook **`adjoint_modeling.ipynb`**.
 
 ####Figure: {#Gradient}
 ![](Figures/camembert_true.pdf){width=33%}
@@ -175,7 +166,7 @@ to obtain the full gradient (Figure #Gradient). This result can be reproduced wi
 ![](Figures/simplegrad.pdf){width=33%}
 : Camembert velocity true and initial model with sources (red dots), receivers (green dots) locations and the FWI gradient for 21 source locations, where each shot is recorded by 101 receivers located on the right-hand side of the model. The initial model used to compute the predicted data and gradient is a constant velocity model with the background velocity of the true model. This result can be reproduced by running the script **`adjoint_modeling.ipynb`**.
 
-{++This gradient can then be used for a simple gradient descent as illustrated at the end of the notebook. After each update a new gradient is computed for the new velocity model until sufficient decrease of the objective or chosen number of iteration is reached. More advanced algorithm will be described in the third part of this tutorial serie.++} 
+{++This gradient can then be used for a simple gradient descent optimization loop, as illustrated at the end of the notebook. After each update, a new gradient is computed for the new velocity model until sufficient decrease of the objective or chosen number of iteration is reached. A detailled treatment of optimimzatim and more advanced algorithms will be described in the third and final part of this tutorial series.++} 
 
 ## Conclusions
 
