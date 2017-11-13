@@ -1,7 +1,7 @@
 ---
 title: Full-Waveform Inversion - Part 2``:`` adjoint modeling
 author: |
-	Mathias Louboutin^1^\*, flipp Witte^1^, Michael Lange^2^, Navjot Kukreja^2^, Fabio Luporini^2^, Gerard Gorman^2^, and Felix J. Herrmann^1,3^\
+	Mathias Louboutin^1^\*, Philipp Witte^1^, Michael Lange^2^, Navjot Kukreja^2^, Fabio Luporini^2^, Gerard Gorman^2^, and Felix J. Herrmann^1,3^\
 	^1^ Seismic Laboratory for Imaging and Modeling (SLIM), The University of British Columbia \
 	^2^ Imperial College London, London, UK\
 	^3^ now at Georgia Institute of Technology, USA \
@@ -25,7 +25,7 @@ In the second part of this tutorial series, we will discuss how to set up and so
 * Solving an adjoint wave-equation with the data residual as the adjoint source. In the adjoint (reverse) time loop, cross correlate the second time derivative of the forward wavefield with the adjoint wavefield and sum over time.
 
 
-{++We start with the definition and derivation of the adjoint wave-equation and its Devito stencil, then we show how to compute the gradient of the conventional leas-square FWI misfit function. Finally we show a simple gradient on a 2D model and introduce a verification framework as well as a simple FWI gradient descent example in the notebook. As usual, this tutorial is accompanied by all the code you need to reproduce the figures. Go to  github.com/seg/tutorials-2017 and follow the links.++}
+{++We start with the definition and derivation of the adjoint wave-equation and its [Devito] stencil, then we show how to compute the gradient of the conventional leas-square FWI misfit function. Finally we show a simple gradient on a 2D model and introduce a verification framework as well as a simple FWI gradient descent example in the notebook. As usual, this tutorial is accompanied by all the code you need to reproduce the figures. Go to  github.com/seg/tutorials-2017 and follow the links.++}
 
 {++ Consider to add connection / evaluation sentence to connect to next section. ++}
 ## The adjoint wave-equation
@@ -144,7 +144,7 @@ Finally, we create the full propagator by adding the source expression to our pr
 
 The full script for setting up the adjoint wave-equation, including an animation of the adjoint wavefield is available in **`adjoint_modeling.ipynb`**.
 
-{>>May want to say that we produce ``v`` everywhere and that that is an object we can typically not store so we evaluate it as part of the gradient calculations. <<}
+{>>May want to say that we produce ``v`` everywhere and that that is an object we can typically not store so we evaluate it as part of the gradient calculations. <<}{>>MLOU: added in grad part<<}
 
 **MLOU: I can add snapshot of adjoint wavefield if necessary and enough space**
 
