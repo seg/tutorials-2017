@@ -31,7 +31,7 @@ In the second part of this tutorial series, we will discuss how to set up and so
 
 Adjoint wave-equations are a main component in seismic inversion algorithm and require to be accurate and tested. The derivation of the adjoint wave-equations in the acoustic case is easy as it is self-adjoint without absorbing boundary. However there are many discrete wave-equations that do not have that property (such as TTI [@TTI]) and needs rigorous thinking. We concentrate here, as in part 1, on the acoustic case to illustrate seismic inversion framework. 
 
-To implement the adjoint wave-equation with [Devito], we once again start from the PDE in continuous form. With the variables defined as in part 1 and the data residual {==$\delta d(x,y,t; x_r, y_r)$, located at $x_r, y_r$, {++(receivers locations)++} ==} 
+To implement the adjoint wave-equation with [Devito], we once again start from the PDE in continuous form. With the variables defined as in part 1 and the data residual {==$\delta d(x,y,t; x_r, y_r)$, located at $x_r, y_r$ {++(receivers locations)++},==} 
 
  {>>Not sure I follow this notation. It is the residual inserted at the receiver locations.<<} 
  
@@ -58,7 +58,7 @@ Following part 1, we first define the discrete adjoint wavefield $\mathbf{v}$ as
 	stencil_v = Eq(v.backward, solve(pde, v.backward)[0])
 ```
 
-Just as for the forward wave-equation, `stencil_v` defines the update for the adjoint wavefield of a single time step within the (reverse) time loop and corresponds to the expression: 
+Just as for the forward wave-equation, `stencil_v` defines the update for the adjoint wavefield of a single time step. The only difference is that, while the forward modeling propagator goes forward in time, the adjoint propagator goes backward in time (initial time conditions for the forward propagator turn into final time conditions for the adjoint propagator) and corresponds to the expression: 
 
 {>>Role of ``\text{time}`` unclear. It just to be an integer index but I am not longer sure. Was also an issue in paper 1. Add what interval it runs on.<<}{>>MLOU: \text{time} interval added, it follows Devito indexing naming convention<<}
 
@@ -143,7 +143,7 @@ grad_update = Eq(grad, grad - u.dt2 * v)
 						time_axis=Backward)
 ```
 
-Solving the adjoint wave-equation by running `op_grad(time=nt, dt=model.critical_dt)` from the Python command line now includes computing the FWI gradient for a single source, which afterwards can be accessed with `grad.data`. 
+Solving the adjoint wave-equation by running `op_grad(time=nt, dt=model.critical_dt)` from the Python command line now includes computing the FWI gradient for a single source, which afterwards can be accessed with `grad.data`.
 
 
 #### Verification
