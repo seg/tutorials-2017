@@ -24,8 +24,7 @@ In the second part of this tutorial series, we will discuss how to set up and so
 
 * Solving an adjoint wave-equation with the data residual as the adjoint source. In the adjoint (reverse) time loop, cross correlate the second time derivative of the forward wavefield with the adjoint wavefield and sum over time.
 
-
-{++We start with the definition and derivation of the adjoint wave-equation and its [Devito] stencil, then we show how to compute the gradient of the conventional leas-square FWI misfit function. Finally we show a simple gradient on a 2D model and introduce a verification framework as well as a simple FWI gradient descent example in the notebook. As usual, this tutorial is accompanied by all the code you need to reproduce the figures. Go to  github.com/seg/tutorials-2017 and follow the links.++}
+{++We start with the definition and derivation of the adjoint wave-equation and its [Devito] stencil, then we show how to compute the gradient of the conventional leas-square FWI misfit function. Finally we show a simple gradient on a 2D model and introduce a verification framework as well as a simple FWI gradient descent example in the notebook **`adjoint_modeling.ipynb`**. As usual, this tutorial is accompanied by all the code you need to reproduce the figures. Go to  github.com/seg/tutorials-2017 and follow the links.++}
 
 ## The adjoint wave-equation
 
@@ -63,7 +62,7 @@ Just as for the forward wave-equation, `stencil_v` defines the update for the ad
 {>>Role of ``\text{time}`` unclear. It just to be an integer index but I am not longer sure. Was also an issue in paper 1. Add what interval it runs on.<<}{>>MLOU: \text{time} interval added, it follows Devito indexing naming convention<<}
 
 ```math {#WEdisadj}
-\mathbf{v}[\text{time}-dt] = 2\mathbf{v}[\text{time}] - \mathbf{v}[\text{time}+dt] + \frac{dt^2}{\mathbf{m}}\Delta \mathbf{v}[\text{time}], \quad \text{time}=1 \cdots n_{t-1}
+\mathbf{v}[\text{time}-dt] = 2\mathbf{v}[\text{time}] - \mathbf{v}[\text{time}+dt] + \frac{dt^2}{\mathbf{m}}\Delta \mathbf{v}[\text{time}], \quad \text{time} = n_{t-1} \cdots 1
 ```
 
 with {==``dt``==} {>>MLOU: smae as \text{time}, dt follows Devito var naming<<}
@@ -85,7 +84,7 @@ Finally, we create the full propagator by adding the source expression to our pr
 	op_adj = Operator([stencil_v] + src_term, time_axis=Backward)
 ```
 
-In contrast to forward modeling, we do not need to sample ([Devito] `interpolate`)since we are only interested in the adjoint wavefield itself. 
+In contrast to forward modeling, we do not need any measurment ([Devito] `interpolate`) since we are only interested in the adjoint wavefield itself. 
 {>>Needed, we did not really introduce these operators, we only mentioned that we extract/save the wavefield at the receiver locations. We leave the operators to part 3.<<}{>>MLOU: switch to no measurement necessary<<} 
 
 The full script for setting up the adjoint wave-equation, including an animation of the adjoint wavefield is available in **`adjoint_modeling.ipynb`**.
@@ -147,19 +146,14 @@ Solving the adjoint wave-equation by running `op_grad(time=nt, dt=model.critical
 
 
 #### Verification
+
 The {--{==final==}--} {++next++}
 {>>Bit strange I would do this before running the inversion. Also need to add a sentence why this is very important. Also may need a remark on what we do on the damping layer to make sure we pass gradient tests.<<} 
 
-step of the adjoint modeling and gradient part is verification with unit testing, i.e. we ensure that the adjoints and gradients are implemented correctly. Incorrect adjoints can lead to unpredictable behaviour during and inversion and in the worst case cause slower convergence or convergence to wrong solutions. Since our forward-adjoint wave-equation solvers implicitly correspond to forward-adjoint matrix-vector products {--$\mathbf{G} \mathbf{q}$ and $\mathbf{G}^\top\mathbf{\delta d}$,--} we need to ensure that the relationship {--$\delta \mathbf{d}^\top \mathbf{G} \mathbf{q} = \mathbf{q}^\top\mathbf{G}^\top\mathbf{\delta d}$--} 
-
-{>>For the sake of simplicity and the fact that we need to be careful since not all operators are introduced to included the math. We could also decide to leave this to part 3 since quasi-Newton methods need true gradients.... <<}
-
-{>>MLOU: I would keep it as it is pure self contained verification of implementation."}
-
-holds within machine precision (see **`tests/test_adjointA.py`** for the full adjoint test). Furthermore, we verify the correct implementation of the FWI gradient by ensuring that using the gradient leads to first order convergence. The gradient test can be found in **`tests/test_gradient.py`**.
+step of the adjoint modeling and gradient part is verification with unit testing, i.e. we ensure that the adjoints and gradients are implemented correctly. Incorrect adjoints can lead to unpredictable behaviour during and inversion and in the worst case cause slower convergence or convergence to wrong solutions. Since our forward-adjoint wave-equation solvers correspond to forward-adjoint pairs, we need to ensure that the adjoint test (dot-test [@dasilva2017uls]){>>For the sake of simplicity and the fact that we need to be careful since not all operators are introduced to included the math. We could also decide to leave this to part 3 since quasi-Newton methods need true gradients.... <<} holds within machine precision (see **`tests/test_adjointA.py`** for the full adjoint test). Furthermore, we verify the correct implementation of the FWI gradient by ensuring that using the gradient leads to first order convergence. The gradient test can be found in **`tests/test_gradient.py`**.
  
-  {>>Would move to part 3.<<}
-  
+{>>Would move to part 3.<<}
+{>>MLOU: I would keep it as it is pure self contained verification of implementation."}
 #### Example
 
 To further demonstrate the gradient computation, {==we perform==}
@@ -178,9 +172,9 @@ to obtain the full gradient (Figure #Gradient). This result can be reproduced wi
 ![](Figures/camembert_true.pdf){width=33%}
 ![](Figures/camembert_init.pdf){width=33%}
 ![](Figures/simplegrad.pdf){width=33%}
-: Camembert velocity true and initial model with sources (red dots), receivers (green dots) locations and the FWI gradient for 21 source locations, where each shot is recorded by 101 receivers located on the right-hand side of the model. The initial model used to compute the predicted data and gradient is a constant velocity model with the background velocity of the true model. This result can be reproduced by running the script **`adjoint_gradient.ipynb`**.
+: Camembert velocity true and initial model with sources (red dots), receivers (green dots) locations and the FWI gradient for 21 source locations, where each shot is recorded by 101 receivers located on the right-hand side of the model. The initial model used to compute the predicted data and gradient is a constant velocity model with the background velocity of the true model. This result can be reproduced by running the script **`adjoint_modeling.ipynb`**.
 
-{++This gradient can then be used for a simple gradient descent as illustrated in the notebook. After each update a new gradient is computed for the new velocity model until sufficient decrease of the objective or chosen number of iteration is reached. More advanced algorithm will be described in the third part of this tutorial serie.++} 
+{++This gradient can then be used for a simple gradient descent as illustrated at the end of the notebook. After each update a new gradient is computed for the new velocity model until sufficient decrease of the objective or chosen number of iteration is reached. More advanced algorithm will be described in the third part of this tutorial serie.++} 
 ## Conclusions
 
 The gradient of the FWI objective function is computed by solving adjoint wave-equations and summing the point-wise product of forward and adjoint wavefields over all time steps. Using [Devito], the adjoint wave-equation is set up in a similar fashion as the forward wave-equation, with the main difference being the (adjoint) source, which is the residual between the observed and predicted shot records. The FWI gradient is computed as part of the adjoint time loop and implemented by adding its symbolic expression to the stencil for the adjoint propagator. With the ability to model shot records and compute gradients of the FWI objective function, we will demonstrate how to set up more advanced gradient-based algorithms for FWI in the next part.
